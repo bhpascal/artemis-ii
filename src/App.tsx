@@ -50,7 +50,7 @@ export function App() {
               Bret Victor
             </a>{' '}
             and{' '}
-            <a href="https://ncase.me/" target="_blank" rel="noopener noreferrer">
+            <a href="https://explorabl.es" target="_blank" rel="noopener noreferrer">
               Nicky Case
             </a>.
             Orbital mechanics computed from first principles using the

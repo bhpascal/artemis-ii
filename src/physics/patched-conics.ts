@@ -40,10 +40,17 @@ export interface StateVector {
 }
 
 export interface FreeReturnResult {
+  /** Trajectory points in the co-rotating frame (Moon at +x, figure-8 shape) */
   departurePts: Array<{ x: number; y: number }>
   flybyPts: Array<{ x: number; y: number }>
   returnPts: Array<{ x: number; y: number }>
+  /** Same trajectory in the inertial frame (Moon at moonAngleRaw, teardrop shape) */
+  inertialDeparturePts: Array<{ x: number; y: number }>
+  inertialFlybyPts: Array<{ x: number; y: number }>
+  inertialReturnPts: Array<{ x: number; y: number }>
   moonPos: { x: number; y: number }
+  /** Moon position in the inertial frame */
+  inertialMoonPos: { x: number; y: number }
   moonAngle: number
   flybyPeriapsis: number
   turnAngle: number
@@ -179,13 +186,13 @@ function computeLunarFlyby(
   // Approach direction
   const approachAngle = Math.atan2(relVy, relVx)
 
-  // Determine turn direction: we want the flyby to bend the trajectory
-  // back toward Earth. Use cross product of approach velocity with
-  // Moon-to-Earth vector.
-  const moonToEarthX = -moonX
-  const moonToEarthY = -moonY
-  const cross = relVx * moonToEarthY - relVy * moonToEarthX
-  const turnSign = cross > 0 ? -1 : 1
+  // Turn direction from the angular momentum of the hyperbolic approach.
+  // L = relPos × relVel determines which way the spacecraft orbits the Moon.
+  // L < 0 → clockwise (standard prograde free-return around the far side).
+  const relX = stateEarth.x - moonX
+  const relY = stateEarth.y - moonY
+  const L = relX * relVy - relY * relVx
+  const turnSign = L > 0 ? +1 : -1
 
   // Exit velocity: same magnitude, rotated by turn angle
   const exitAngle = approachAngle + turnSign * turnAngle
@@ -199,9 +206,7 @@ function computeLunarFlyby(
   cosNuSOI = Math.max(-1, Math.min(1, cosNuSOI))
   const nuSOI = Math.acos(cosNuSOI)
 
-  // Entry position angle (relative to Moon, from SOI entry point)
-  const relX = stateEarth.x - moonX
-  const relY = stateEarth.y - moonY
+  // Entry position angle (relative to Moon)
   const entryAngle = Math.atan2(relY, relX)
 
   // Exit position: rotated by 2*nuSOI (angular span on the SOI boundary)
@@ -412,7 +417,11 @@ export function computeFreeReturn(
     departurePts: rotDepPts,
     flybyPts: rotFlyPts,
     returnPts: rotRetPts,
+    inertialDeparturePts: depPts,
+    inertialFlybyPts: flyby.flybyPts,
+    inertialReturnPts: retPts,
     moonPos: { x: D_MOON, y: 0 }, // Moon at +x in the rotating frame
+    inertialMoonPos: { x: moonX, y: moonY },
     moonAngle: 0,
     flybyPeriapsis,
     turnAngle: flyby.turnAngle,

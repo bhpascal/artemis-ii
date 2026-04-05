@@ -25,6 +25,7 @@ const V_CIRC_LEO = circularVelocity(MU_EARTH, R_LEO)
 export function FreeReturnSection() {
   const [flybyAlt, setFlybyAlt] = useState(6500)
   const [injectionDv, setInjectionDv] = useState(3133)
+  const [showInertial, setShowInertial] = useState(false)
   const { level } = useLevel()
 
   const injectionV = V_CIRC_LEO + injectionDv
@@ -50,13 +51,19 @@ export function FreeReturnSection() {
       drawStars(ctx, width, height, dpr, 50, 73)
 
       if (trajectory) {
+        // Choose frame: co-rotating (figure-8) or inertial (teardrop)
+        const depPts = showInertial ? trajectory.inertialDeparturePts : trajectory.departurePts
+        const flyPts = showInertial ? trajectory.inertialFlybyPts : trajectory.flybyPts
+        const retPts = showInertial ? trajectory.inertialReturnPts : trajectory.returnPts
+        const mPos = showInertial ? trajectory.inertialMoonPos : trajectory.moonPos
+
         // Trajectory segments
-        drawOrbitPath(ctx, transform, trajectory.departurePts, '#2E86C1', 2.5)
-        drawOrbitPath(ctx, transform, trajectory.flybyPts, '#E74C3C', 2.5)
-        drawOrbitPath(ctx, transform, trajectory.returnPts, '#27AE60', 2.5)
+        drawOrbitPath(ctx, transform, depPts, '#2E86C1', 2.5)
+        drawOrbitPath(ctx, transform, flyPts, '#E74C3C', 2.5)
+        drawOrbitPath(ctx, transform, retPts, '#27AE60', 2.5)
 
         // Moon
-        drawMoon(ctx, transform, trajectory.moonPos.x, trajectory.moonPos.y, R_MOON, 8)
+        drawMoon(ctx, transform, mPos.x, mPos.y, R_MOON, 8)
 
         // Status label — positioned at top center of canvas, not overlapping anything
         const statusY = 24 * dpr
@@ -71,7 +78,7 @@ export function FreeReturnSection() {
 
         // Turn angle — next to Moon, only at L3+
         if (level >= 3) {
-          const [mx, my] = transform.toScreen(trajectory.moonPos.x, trajectory.moonPos.y)
+          const [mx, my] = transform.toScreen(mPos.x, mPos.y)
           drawLabel(ctx, `δ = ${(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°`, mx, my + 20 * dpr, '#E74C3C', 12 * dpr, 'center')
         }
       } else {
@@ -96,7 +103,7 @@ export function FreeReturnSection() {
         drawLegendItem('#27AE60', 'Return')
       }
     },
-    [trajectory, level]
+    [trajectory, level, showInertial]
   )
 
   // Inset canvas: zoomed flyby view
@@ -335,6 +342,56 @@ export function FreeReturnSection() {
       </LevelBlock>
 
       <InteractiveFigure height={550} render={renderMain} />
+
+      <div style={{ textAlign: 'center', margin: '0.75rem 0' }}>
+        <button
+          onClick={() => setShowInertial(!showInertial)}
+          style={{
+            background: 'none',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            padding: '0.4rem 1rem',
+            fontFamily: 'inherit',
+            fontSize: '0.9rem',
+            color: '#555',
+            cursor: 'pointer',
+          }}
+        >
+          {showInertial ? 'Show co-rotating frame (figure-8)' : 'Show inertial frame (teardrop)'}
+        </button>
+      </div>
+
+      <LevelBlock min={2}>
+        {showInertial ? (
+          <p style={{ fontSize: '1.1rem', color: '#777', textAlign: 'center', fontStyle: 'italic' }}>
+            <LevelText level={2}>
+              This is what the path looks like from far away in space.
+              The Moon is moving, so the path is not a figure-8 — it is
+              more like a loop.
+            </LevelText>
+            <LevelText min={3}>
+              Inertial frame: the Moon moves ~{'\u200B'}40° during transit.
+              The same trajectory that looks like a figure-8 in the
+              co-rotating frame looks like a teardrop when the Moon's
+              orbital motion is included. Both are the same physics —
+              just different perspectives.
+            </LevelText>
+          </p>
+        ) : (
+          <p style={{ fontSize: '1.1rem', color: '#777', textAlign: 'center', fontStyle: 'italic' }}>
+            <LevelText level={2}>
+              This view follows the Earth-Moon system as it moves.
+              That is why the path looks like a figure-8.
+            </LevelText>
+            <LevelText min={3}>
+              Co-rotating frame: the Earth-Moon line stays horizontal.
+              NASA uses this view because it shows the mission geometry
+              clearly — the figure-8 emerges from the flyby redirecting
+              the spacecraft to the opposite side of the Earth-Moon line.
+            </LevelText>
+          </p>
+        )}
+      </LevelBlock>
 
       <h3>Flyby Detail</h3>
       <InteractiveFigure height={350} render={renderInset} />
