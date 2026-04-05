@@ -72,14 +72,13 @@ export function TransferOrbitSection() {
       // Transfer orbit
       if (deltaV > 0 && a > 0 && isFinite(a) && e < 1) {
         const transferPts = ellipsePoints(a, e, 600)
-        // Rotate so periapsis (at LEO) is on the left side (+x → right)
-        // Actually periapsis is at nu=0 which is +x. We want it at the
-        // Earth's position. Since Earth is at the focus (origin), and
-        // periapsis at +x, the orbit extends rightward. That works.
+        // ellipsePoints puts periapsis at +x. We need apoapsis at +x
+        // (toward the Moon). Rotate 180° so apoapsis points right.
+        const rotated = transferPts.map((p) => ({ x: -p.x, y: -p.y }))
         const color = reachesMoon ? '#27AE60' : '#E67E22'
-        drawOrbitPath(ctx, transform, transferPts, color, 2)
+        drawOrbitPath(ctx, transform, rotated, color, 2)
 
-        // Apoapsis marker
+        // Apoapsis marker (now correctly at +x)
         if (isFinite(apoapsisR)) {
           const [apoX, apoY] = transform.toScreen(apoapsisR, 0)
           ctx.beginPath()

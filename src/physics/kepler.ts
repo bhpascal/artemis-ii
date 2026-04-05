@@ -25,11 +25,15 @@ export function solveKepler(M: number, e: number, tol: number = 1e-12): number {
  * Returns hyperbolic anomaly H given mean anomaly M and eccentricity e.
  */
 export function solveKeplerHyperbolic(M: number, e: number, tol: number = 1e-12): number {
-  // Initial guess
-  let H = M
+  // Robust initial guess: H₀ = M works for modest e, but diverges at
+  // high eccentricities. This estimate handles the full range.
+  const absM = Math.abs(M)
+  let H = Math.sign(M) * Math.log(2 * absM / e + 1.8)
 
   for (let i = 0; i < 50; i++) {
-    const dH = (e * Math.sinh(H) - H - M) / (e * Math.cosh(H) - 1)
+    const sinhH = Math.sinh(H)
+    const coshH = Math.cosh(H)
+    const dH = (e * sinhH - H - M) / (e * coshH - 1)
     H -= dH
     if (Math.abs(dH) < tol) break
   }

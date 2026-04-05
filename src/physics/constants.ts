@@ -57,8 +57,8 @@ export const MISSION_DURATION_DAYS = 10
 /** Splashdown epoch: April 10, 2026 */
 export const SPLASHDOWN_EPOCH = Date.UTC(2026, 3, 11, 0, 6, 0)
 
-/** High Earth Orbit after ICPS raises — apogee (m) */
-export const HEO_APOGEE = 74030e3
+/** High Earth Orbit after ICPS raises — apogee from Earth center (m) */
+export const HEO_APOGEE = R_EARTH + 74030e3
 
 /** High Earth Orbit — perigee (m) */
 export const HEO_PERIGEE = R_EARTH + 2414e3

@@ -147,8 +147,11 @@ export function classifyOrbit(
   if (v >= vCirc * 0.998 && v <= vCirc * 1.002) {
     return { type: 'circular', a, e: 0 }
   }
-  if (a > 0 && periapsis(a, e) < r * 0.99) {
-    // Periapsis below injection point — suborbital if it hits the surface
+  if (a > 0 && periapsis(a, e) < r * 0.95) {
+    // Suborbital: periapsis below the surface. For tangential injection at
+    // radius r, v < v_circ means r is at apoapsis and the true periapsis
+    // dips lower. "Suborbital" = hits the surface (periapsis < body radius).
+    // We use 0.95*r as a proxy since we don't know body radius here.
     return { type: 'suborbital', a, e }
   }
   return { type: 'elliptical', a, e }

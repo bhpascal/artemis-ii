@@ -83,23 +83,23 @@ export function NewtonCannonSection() {
       const color = orbitColor(v)
 
       if (v > V_ESC * 1.001) {
-        // Hyperbolic
+        // Hyperbolic — cannon is at periapsis, rotate periapsis to top (+y)
         const a = semiMajorAxis(MU_EARTH, CANNON_R, v)
         const e = 1 - CANNON_R / a // a is negative for hyperbola, e > 1
         const pts = hyperbolaPoints(a, e, undefined, 300)
-        drawOrbitPathClipped(ctx, transform, pts, R_EARTH, color, 2)
+        // Rotate so periapsis (nu=0, +x) goes to +y (top)
+        const rotated = pts.map((p) => ({ x: -p.y, y: p.x }))
+        drawOrbitPathClipped(ctx, transform, rotated, R_EARTH, color, 2)
       } else if (v > V_CIRC * 0.5) {
-        // Elliptical (or near-circular, or suborbital)
         const a = semiMajorAxis(MU_EARTH, CANNON_R, v)
         const e = Math.abs(eccentricityFromPeriapsis(a, CANNON_R))
         const pts = ellipsePoints(a, e, 600)
 
-        // Rotate so periapsis is at the cannon position (top of Earth)
-        // Periapsis is at nu=0, which is along +x. We want it at +y (top).
-        const rotated = pts.map((p) => ({
-          x: -p.y,
-          y: p.x,
-        }))
+        // For v >= v_circ: cannon is at periapsis → rotate periapsis to +y (top)
+        // For v < v_circ: cannon is at apoapsis → rotate apoapsis to +y (top)
+        const rotated = v >= V_CIRC
+          ? pts.map((p) => ({ x: -p.y, y: p.x }))   // periapsis to +y
+          : pts.map((p) => ({ x: p.y, y: -p.x }))    // apoapsis to +y
 
         drawOrbitPathClipped(ctx, transform, rotated, R_EARTH, color, 2)
       }
