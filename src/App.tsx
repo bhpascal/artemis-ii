@@ -1,25 +1,17 @@
-import { useState } from 'react'
 import { Article } from './components/Article'
 import { LevelSwitcher } from './components/LevelSwitcher'
 import { LevelText, LevelBlock } from './components/LevelText'
-import { MathBlock } from './components/MathBlock'
-import { MathFrac } from './components/MathFrac'
-import { ScrubableNumber } from './components/ScrubableNumber'
 import { Sidenote } from './components/Sidenote'
 import { LevelContext, useLevelState } from './hooks/useLevel'
+import { NewtonCannonSection } from './sections/NewtonCannonSection'
+import { TestOverlay } from './test/TestOverlay'
 
 export function App() {
   const levelState = useLevelState()
-  const [velocity, setVelocity] = useState(7784)
-
-  // Derived: semi-major axis from vis-viva (simplified, circular orbit at LEO)
-  const mu = 3.986e14 // m^3/s^2
-  const r = 6.571e6 // m (200 km altitude)
-  const a = 1 / (2 / r - (velocity * velocity) / mu)
-  const apoapsis = a > 0 ? (2 * a - r) / 1000 : Infinity // km
 
   return (
     <LevelContext.Provider value={levelState}>
+      <TestOverlay />
       <LevelSwitcher />
       <Article>
         <h1>Artemis II</h1>
@@ -28,6 +20,7 @@ export function App() {
           astronauts to the Moon and back
         </p>
 
+        {/* Section 1: The Hook */}
         <section className="section">
           <LevelBlock level={1}>
             <p>
@@ -83,141 +76,10 @@ export function App() {
           </p>
         </section>
 
-        <section className="section">
-          <h2>Orbits from First Principles</h2>
+        {/* Section 2: Newton's Cannon */}
+        <NewtonCannonSection />
 
-          <LevelBlock level={1}>
-            <p>
-              Imagine you are standing on a really, really tall mountain — so
-              tall it pokes above all the air. You throw a ball sideways. It
-              curves down and hits the ground. Throw harder — it goes farther.
-              Now throw it <em>so hard</em> that the ground curves away
-              underneath it as fast as the ball falls. Congratulations: your
-              ball is in orbit!
-            </p>
-          </LevelBlock>
-
-          <LevelBlock level={2}>
-            <p>
-              Isaac Newton imagined a cannon on a very high mountain. If you
-              fire the cannonball slowly, it falls and hits the ground. Fire
-              it faster, and it goes farther before landing. At about 7,800
-              meters per second, the cannonball falls at the same rate the
-              Earth curves away — and it never lands. That is a circular orbit.
-            </p>
-          </LevelBlock>
-
-          <LevelBlock min={3} max={4}>
-            <p>
-              In 1687, Isaac Newton proposed a thought experiment. Imagine a
-              cannon on a very tall mountain, high above the atmosphere. Fire
-              the cannonball horizontally. At low speed, it arcs to the ground.
-              Fire faster — it travels farther before hitting. Fire fast enough,
-              and the Earth curves away beneath it as fast as it falls. The
-              cannonball is in orbit.
-              <Sidenote number={2}>
-                Newton imagined this in the <em>Principia</em>. It took 270
-                years to actually do it.
-              </Sidenote>
-            </p>
-          </LevelBlock>
-
-          <LevelBlock level={5}>
-            <p>
-              Newton's cannon is the canonical introduction to orbital
-              mechanics, but the real insight is variational: the orbit
-              emerges as a geodesic of the Lagrangian <var>L</var> = <var>T</var> − <var>V</var> in
-              a central force field. In polar coordinates, the cyclic
-              coordinate θ immediately yields conservation of angular
-              momentum, and the radial equation gives the orbit equation
-              directly via the Binet substitution. We will take the energy
-              approach instead — it is more intuitive and leads to the
-              vis-viva equation in one step.
-              <Sidenote number={2}>
-                Newton imagined this in the <em>Principia</em>. It took 270
-                years to actually do it. The Lagrangian formulation came a
-                century later.
-              </Sidenote>
-            </p>
-          </LevelBlock>
-
-          <p>
-            <LevelText max={2}>
-              The speed you throw the ball determines everything about its
-              path. Try it — drag the number below to change the launch speed:
-            </LevelText>
-            <LevelText min={3}>
-              The speed you start at determines the entire shape of your orbit.
-              This single idea — that velocity dictates geometry — is captured
-              by the vis-viva equation:
-            </LevelText>
-          </p>
-
-          <LevelBlock min={3}>
-            <MathBlock>
-              <var>v</var><sup>2</sup> = <var>μ</var>
-              <span style={{ margin: '0 0.2em' }}>(</span>
-              <MathFrac num={<>2</>} den={<var>r</var>} />
-              <span> − </span>
-              <MathFrac num={<>1</>} den={<var>a</var>} />
-              <span style={{ margin: '0 0.2em' }}>)</span>
-            </MathBlock>
-          </LevelBlock>
-
-          <p>
-            Launch velocity:{' '}
-            <ScrubableNumber
-              initial={7784}
-              min={5000}
-              max={12000}
-              step={50}
-              sensitivity={5}
-              precision={0}
-              unit=" m/s"
-              value={velocity}
-              onChange={setVelocity}
-            />
-          </p>
-
-          <input
-            type="range"
-            className="scrub-slider"
-            min={5000}
-            max={12000}
-            step={50}
-            value={velocity}
-            onChange={(e) => setVelocity(Number(e.target.value))}
-          />
-
-          <LevelBlock min={3}>
-            <p>
-              {velocity < 7784 ? (
-                <>At this speed, the orbit intersects Earth's surface — suborbital.</>
-              ) : velocity < 7834 ? (
-                <>Nearly circular orbit — the cannonball circles the Earth.</>
-              ) : velocity < 11009 ? (
-                <>Elliptical orbit. Apoapsis: {apoapsis < 1e8 ? apoapsis.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '∞'} km from Earth's center.</>
-              ) : (
-                <>Escape velocity exceeded — the cannonball leaves Earth forever.</>
-              )}
-            </p>
-          </LevelBlock>
-
-          <LevelBlock max={2}>
-            <p>
-              {velocity < 7784 ? (
-                <>The ball crashes back to Earth. Not fast enough!</>
-              ) : velocity < 7834 ? (
-                <>The ball goes all the way around! That is an orbit!</>
-              ) : velocity < 11009 ? (
-                <>The orbit is stretched into an oval shape — an ellipse.</>
-              ) : (
-                <>So fast it escapes Earth entirely! Goodbye, ball!</>
-              )}
-            </p>
-          </LevelBlock>
-        </section>
-
+        {/* Placeholder: remaining sections built in future phases */}
         <section className="section">
           <h2>The Free Return</h2>
 
@@ -271,34 +133,6 @@ export function App() {
               the main engine. The crew survived because they were on a
               free-return trajectory. The Moon brought them home.
             </Sidenote>
-          </p>
-        </section>
-
-        <section className="section">
-          <h3>What comes next</h3>
-          <p>
-            <LevelText max={2}>
-              Below, you will build this whole trip from scratch! You will
-              throw cannonballs, stretch orbits, sling around the Moon, and
-              fly the real mission.
-            </LevelText>
-            <LevelText min={3}>
-              Below, you will build this trajectory from scratch. You will
-              start with Newton's cannon, learn why speed determines orbit
-              shape, stretch an orbit to reach the Moon, watch the Moon's
-              gravity bend a spacecraft's path, and finally scrub through
-              the actual Artemis II mission timeline — ten days compressed
-              into a slider.
-            </LevelText>
-          </p>
-          <p>
-            Every number you see{' '}
-            <span className="scrubable" style={{ cursor: 'default', borderBottom: '1.5px dotted #2E86C1', color: '#2E86C1' }}>
-              underlined like this
-            </span>{' '}
-            can be dragged to change its value. The visualizations update
-            in real time. The panel on the right lets you switch between
-            five levels of explanation.
           </p>
         </section>
       </Article>
