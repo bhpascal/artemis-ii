@@ -52,8 +52,9 @@ export function RealMissionSection() {
       transform.dpr = dpr
       transform.width = width
       transform.height = height
-      transform.viewRadius = D_MOON * 1.4
-      transform.centerX = D_MOON * 0.3
+      // Frame: Earth left, Moon right
+      transform.viewRadius = D_MOON * 0.75
+      transform.centerX = D_MOON * 0.5
 
       drawStars(ctx, width, height, dpr, 60, 99)
 
@@ -64,7 +65,7 @@ export function RealMissionSection() {
           ...freeReturn.flybyPts,
           ...freeReturn.returnPts,
         ]
-        drawOrbitPath(ctx, transform, allPts, 'rgba(150,150,150,0.15)', 1.5, [3 * dpr, 3 * dpr])
+        drawOrbitPath(ctx, transform, allPts, 'rgba(150,150,150,0.15)', 1.5)
       }
 
       // Phase-colored traversed segments (skip pre-TLI HEO points)
@@ -87,21 +88,13 @@ export function RealMissionSection() {
         drawOrbitPath(ctx, transform, segPts, phase?.color ?? '#888', 2.5)
       }
 
-      // Moon's orbit (faint)
-      const moonArc: Array<{ x: number; y: number }> = []
-      for (let i = 0; i <= 200; i++) {
-        const angle = (i / 200) * 2 * Math.PI
-        moonArc.push({ x: D_MOON * Math.cos(angle), y: D_MOON * Math.sin(angle) })
-      }
-      drawOrbitPath(ctx, transform, moonArc, 'rgba(200,200,200,0.2)', 1, [4 * dpr, 4 * dpr])
-
       // Earth
-      drawEarth(ctx, transform, R_EARTH, 8)
+      drawEarth(ctx, transform, R_EARTH, 10)
 
-      // Moon at +x (co-rotating frame, matching the trajectory)
+      // Moon at +x (co-rotating frame)
       const moonX = D_MOON
       const moonY = 0
-      drawMoon(ctx, transform, moonX, moonY, R_MOON, 5)
+      drawMoon(ctx, transform, moonX, moonY, R_MOON, 8)
 
       // Spacecraft
       if (currentPoint) {

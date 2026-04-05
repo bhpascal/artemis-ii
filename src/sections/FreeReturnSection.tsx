@@ -43,108 +43,53 @@ export function FreeReturnSection() {
       transform.dpr = dpr
       transform.width = width
       transform.height = height
-      transform.viewRadius = D_MOON * 1.4
-      transform.centerX = D_MOON * 0.3
-      transform.centerY = 0
+      // Frame: Earth left, Moon right, trajectory fills the canvas
+      transform.viewRadius = D_MOON * 0.75
+      transform.centerX = D_MOON * 0.5
 
       drawStars(ctx, width, height, dpr, 50, 73)
 
-      // Draw Moon's orbital circle (faint reference)
-      const nCircle = 200
-      const circlePts: Array<{ x: number; y: number }> = []
-      for (let i = 0; i <= nCircle; i++) {
-        const angle = (i / nCircle) * 2 * Math.PI
-        circlePts.push({ x: D_MOON * Math.cos(angle), y: D_MOON * Math.sin(angle) })
-      }
-      drawOrbitPath(ctx, transform, circlePts, 'rgba(200,200,200,0.3)', 1, [4 * dpr, 4 * dpr])
-
       if (trajectory) {
-        // Departure (blue)
+        // Trajectory segments
         drawOrbitPath(ctx, transform, trajectory.departurePts, '#2E86C1', 2.5)
-        // Flyby (red)
         drawOrbitPath(ctx, transform, trajectory.flybyPts, '#E74C3C', 2.5)
-        // Return (green)
         drawOrbitPath(ctx, transform, trajectory.returnPts, '#27AE60', 2.5)
 
-        // Moon's SOI (dashed circle)
-        const soiPts: Array<{ x: number; y: number }> = []
-        for (let i = 0; i <= 100; i++) {
-          const angle = (i / 100) * 2 * Math.PI
-          soiPts.push({
-            x: trajectory.moonPos.x + SOI_MOON * Math.cos(angle),
-            y: trajectory.moonPos.y + SOI_MOON * Math.sin(angle),
-          })
-        }
-        drawOrbitPath(ctx, transform, soiPts, '#CCCCCC', 1, [3 * dpr, 3 * dpr])
+        // Moon
+        drawMoon(ctx, transform, trajectory.moonPos.x, trajectory.moonPos.y, R_MOON, 8)
 
-        // Draw Moon at its computed position
-        drawMoon(ctx, transform, trajectory.moonPos.x, trajectory.moonPos.y, R_MOON, 6)
-
-        // Moon label
-        const [mlx, mly] = transform.toScreen(trajectory.moonPos.x, trajectory.moonPos.y)
-        drawLabel(ctx, 'Moon', mlx + 10 * dpr, mly - 10 * dpr, '#888', 12 * dpr)
-
-        // Return perigee indicator
+        // Status label — positioned at top center of canvas, not overlapping anything
+        const statusY = 24 * dpr
+        const statusX = width * dpr / 2
         if (trajectory.hitsEarth) {
-          // Green: successful return
-          const [elx, ely] = transform.toScreen(0, -R_EARTH * 4)
-          drawLabel(ctx, 'Returns to Earth!', elx, ely, '#27AE60', 14 * dpr, 'center')
-          if (level >= 3) {
-            drawLabel(
-              ctx,
-              `perigee alt: ${(trajectory.returnPerigeeAlt / 1000).toFixed(0)} km`,
-              elx, ely + 18 * dpr,
-              '#27AE60', 11 * dpr, 'center'
-            )
-          }
+          drawLabel(ctx, 'Returns to Earth!', statusX, statusY, '#27AE60', 15 * dpr, 'center')
         } else if (trajectory.returnPerigeeAlt > 200e3) {
-          const [elx, ely] = transform.toScreen(0, -R_EARTH * 4)
-          drawLabel(ctx, 'Misses Earth — too shallow', elx, ely, '#E67E22', 13 * dpr, 'center')
+          drawLabel(ctx, 'Misses Earth — too shallow', statusX, statusY, '#E67E22', 15 * dpr, 'center')
         } else if (trajectory.returnPerigeeAlt < 0) {
-          const [elx, ely] = transform.toScreen(0, -R_EARTH * 4)
-          drawLabel(ctx, 'Hits the atmosphere too steeply', elx, ely, '#E74C3C', 13 * dpr, 'center')
+          drawLabel(ctx, 'Too steep — hits the atmosphere', statusX, statusY, '#E74C3C', 15 * dpr, 'center')
         }
 
-        // Turn angle annotation
+        // Turn angle — next to Moon, only at L3+
         if (level >= 3) {
           const [mx, my] = transform.toScreen(trajectory.moonPos.x, trajectory.moonPos.y)
-          drawLabel(
-            ctx,
-            `δ = ${(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°`,
-            mx + 10 * dpr, my + 16 * dpr,
-            '#E74C3C', 11 * dpr
-          )
-        }
-
-        // Max distance
-        if (level >= 3) {
-          const [elx, ely] = transform.toScreen(0, -R_EARTH * 7)
-          drawLabel(
-            ctx,
-            `max distance: ${(trajectory.maxDistance / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km`,
-            elx, ely,
-            '#888', 11 * dpr, 'center'
-          )
+          drawLabel(ctx, `δ = ${(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°`, mx, my + 20 * dpr, '#E74C3C', 12 * dpr, 'center')
         }
       } else {
-        // No valid trajectory
-        const [cx, cy] = transform.toScreen(D_MOON * 0.3, 0)
-        drawLabel(ctx, 'No valid trajectory at these parameters', cx, cy, '#E74C3C', 14 * dpr, 'center')
+        const statusX = width * dpr / 2
+        drawLabel(ctx, 'No valid trajectory at these parameters', statusX, height * dpr / 2, '#E74C3C', 15 * dpr, 'center')
       }
 
-      // Earth (drawn last, on top)
-      drawEarth(ctx, transform, R_EARTH, 8)
-      const [elx, ely] = transform.toScreen(0, 0)
-      drawLabel(ctx, 'Earth', elx + 12 * dpr, ely + 12 * dpr, '#4A90D9', 11 * dpr)
+      // Earth (on top)
+      drawEarth(ctx, transform, R_EARTH, 10)
 
       // Legend
       if (level >= 3) {
         const lx = 15 * dpr
-        let ly = height * dpr - 60 * dpr
+        let ly = height * dpr - 55 * dpr
         const drawLegendItem = (color: string, label: string) => {
           drawLine(ctx, lx, ly, lx + 20 * dpr, ly, color, 2.5 * dpr)
-          drawLabel(ctx, label, lx + 25 * dpr, ly, '#555', 10 * dpr)
-          ly += 16 * dpr
+          drawLabel(ctx, label, lx + 25 * dpr, ly, '#555', 12 * dpr)
+          ly += 18 * dpr
         }
         drawLegendItem('#2E86C1', 'Departure')
         drawLegendItem('#E74C3C', 'Lunar flyby')
