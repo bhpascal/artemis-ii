@@ -1,6 +1,43 @@
 import { ViewTransform, drawCircle } from './canvas-utils'
 
 /**
+ * Draw a sparse star field. Uses a seeded pseudo-random so stars
+ * don't jitter between frames. Subtle — just enough to say "space."
+ */
+export function drawStars(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  dpr: number,
+  count: number = 60,
+  seed: number = 42
+): void {
+  // Simple seeded PRNG (mulberry32)
+  let s = seed
+  const rand = () => {
+    s |= 0; s = s + 0x6D2B79F5 | 0
+    let t = Math.imul(s ^ s >>> 15, 1 | s)
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
+    return ((t ^ t >>> 14) >>> 0) / 4294967296
+  }
+
+  const w = width * dpr
+  const h = height * dpr
+
+  for (let i = 0; i < count; i++) {
+    const x = rand() * w
+    const y = rand() * h
+    const size = (0.5 + rand() * 1) * dpr
+    const brightness = 0.15 + rand() * 0.25
+
+    ctx.beginPath()
+    ctx.arc(x, y, size, 0, Math.PI * 2)
+    ctx.fillStyle = `rgba(200, 210, 230, ${brightness})`
+    ctx.fill()
+  }
+}
+
+/**
  * Draw Earth as a blue circle with a subtle radial gradient.
  * Enforces a minimum pixel radius so it is visible at any zoom level.
  */
@@ -24,6 +61,17 @@ export function drawEarth(
   gradient.addColorStop(0.7, '#4A90D9')
   gradient.addColorStop(1, '#2E6AB0')
 
+  // Atmosphere glow
+  const glowR = r * 1.15
+  const glow = ctx.createRadialGradient(cx, cy, r * 0.9, cx, cy, glowR)
+  glow.addColorStop(0, 'rgba(106, 179, 224, 0.25)')
+  glow.addColorStop(1, 'rgba(106, 179, 224, 0)')
+  ctx.beginPath()
+  ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
+  ctx.fillStyle = glow
+  ctx.fill()
+
+  // Planet body
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.fillStyle = gradient

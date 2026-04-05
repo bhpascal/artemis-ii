@@ -6,10 +6,12 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
-  padding: 0 1px;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  padding: 0 2px;
+  border-radius: 2px;
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  outline: none;
 }
 
 .scrubable:hover {
@@ -17,10 +19,16 @@
   border-bottom-style: solid;
 }
 
+.scrubable:focus-visible {
+  box-shadow: 0 0 0 2px rgba(46, 134, 193, 0.3);
+  border-bottom-style: solid;
+}
+
 .scrubable.scrubbing {
   background-color: rgba(46, 134, 193, 0.12);
   border-bottom-style: solid;
   color: #1a5276;
+  transform: scale(1.02);
 }
 
 .scrubable-unit {
@@ -106,4 +114,17 @@
 var {
   font-style: italic;
   font-family: 'ET Book', Palatino, Georgia, serif;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .scrubable,
+  .level-text,
+  .level-block {
+    transition: none;
+  }
+
+  .scrubable.scrubbing {
+    transform: none;
+  }
 }

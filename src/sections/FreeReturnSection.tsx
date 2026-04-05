@@ -17,7 +17,7 @@ import {
 import { circularVelocity } from '../physics/orbits'
 import { computeFreeReturn } from '../physics/patched-conics'
 import { ViewTransform, drawLabel, drawLine } from '../rendering/canvas-utils'
-import { drawEarth, drawMoon } from '../rendering/body-renderer'
+import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath } from '../rendering/orbit-renderer'
 
 const V_CIRC_LEO = circularVelocity(MU_EARTH, R_LEO)
@@ -46,6 +46,8 @@ export function FreeReturnSection() {
       transform.viewRadius = D_MOON * 1.4
       transform.centerX = D_MOON * 0.3
       transform.centerY = 0
+
+      drawStars(ctx, width, height, dpr, 50, 73)
 
       // Draw Moon's orbital circle (faint reference)
       const nCircle = 200

@@ -19,7 +19,7 @@ import {
   MISSION_EVENTS,
 } from '../physics/trajectory'
 import { ViewTransform, drawLabel, drawLine, drawArrow } from '../rendering/canvas-utils'
-import { drawEarth, drawMoon } from '../rendering/body-renderer'
+import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath, drawSpacecraft } from '../rendering/orbit-renderer'
 
 import '../styles/timeline.css'
@@ -43,6 +43,8 @@ export function RealMissionSection() {
       transform.height = height
       transform.viewRadius = D_MOON * 1.4
       transform.centerX = D_MOON * 0.3
+
+      drawStars(ctx, width, height, dpr, 60, 99)
 
       // Full trajectory as a faded path
       const allPts = trajectory.map((p) => ({ x: p.x, y: p.y }))

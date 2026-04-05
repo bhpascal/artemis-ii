@@ -17,7 +17,7 @@ import {
   apoapsis,
 } from '../physics/orbits'
 import { ViewTransform } from '../rendering/canvas-utils'
-import { drawEarth, drawMountain, drawCannon } from '../rendering/body-renderer'
+import { drawEarth, drawMountain, drawCannon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPathClipped } from '../rendering/orbit-renderer'
 import { drawAnnotation, drawVelocityLabel } from '../rendering/annotation-renderer'
 import type { Level } from '../types'
@@ -77,6 +77,8 @@ export function NewtonCannonSection() {
       const viewRadius = R_EARTH * 2.2
       transform.viewRadius = viewRadius
       transform.centerY = -R_EARTH * 0.6
+
+      drawStars(ctx, width, height, dpr, 40)
 
       // Compute orbit
       const v = velocity

@@ -9,6 +9,8 @@ interface InteractiveFigureProps {
   render: (ctx: CanvasRenderingContext2D, width: number, height: number, dpr: number) => void
   /** Optional className for the wrapper */
   className?: string
+  /** Accessible description of the visualization */
+  ariaLabel?: string
 }
 
 /**
@@ -19,11 +21,12 @@ export function InteractiveFigure({
   height = 500,
   render,
   className,
+  ariaLabel,
 }: InteractiveFigureProps) {
   const { ref: observerRef, isInView } = useIntersectionObserver(0.05)
   const [width, setWidth] = useState(740)
 
-  // Measure the available width (article body expands into margin for figures)
+  // Measure the available width
   const measureWidth = useCallback(() => {
     const el = observerRef.current
     if (el) {
@@ -53,6 +56,8 @@ export function InteractiveFigure({
       <canvas
         ref={canvasRef}
         style={{ display: 'block' }}
+        role="img"
+        aria-label={ariaLabel ?? 'Interactive orbital mechanics visualization'}
       />
     </div>
   )
