@@ -93,12 +93,8 @@ export function HookSection() {
       // Earth
       drawEarth(ctx, transform, R_EARTH, 8)
 
-      // Moon at current approximate position
-      const moonAngularVelocity = 2 * Math.PI / (27.322 * 86400)
-      const moonAngle = met * moonAngularVelocity
-      const moonX = D_MOON * Math.cos(moonAngle)
-      const moonY = D_MOON * Math.sin(moonAngle)
-      drawMoon(ctx, transform, moonX, moonY, R_MOON, 5)
+      // Moon at +x (co-rotating frame, consistent with trajectory)
+      drawMoon(ctx, transform, D_MOON, 0, R_MOON, 5)
 
       // Spacecraft position
       if (currentPoint && !missionOver) {

@@ -6,9 +6,14 @@ import { useLevel } from '../hooks/useLevel'
 import {
   R_EARTH,
   R_MOON,
+  R_LEO,
+  MU_EARTH,
   D_MOON,
+  FLYBY_ALTITUDE,
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
+import { circularVelocity } from '../physics/orbits'
+import { computeFreeReturn } from '../physics/patched-conics'
 import {
   computeArtemisTrajectory,
   interpolateTrajectory,
@@ -30,6 +35,12 @@ export function RealMissionSection() {
 
   const trajectory = useMemo(() => computeArtemisTrajectory(), [])
 
+  // Smooth spatial path for the background (same as Hook)
+  const freeReturn = useMemo(() => {
+    const vCirc = circularVelocity(MU_EARTH, R_LEO)
+    return computeFreeReturn(vCirc + 3133, FLYBY_ALTITUDE)
+  }, [])
+
   const met = missionHours * 3600 // seconds
   const totalTime = MISSION_DURATION_DAYS * 86400
   const currentPoint = interpolateTrajectory(trajectory, met)
@@ -46,19 +57,27 @@ export function RealMissionSection() {
 
       drawStars(ctx, width, height, dpr, 60, 99)
 
-      // Full trajectory as a faded path
-      const allPts = trajectory.map((p) => ({ x: p.x, y: p.y }))
-      drawOrbitPath(ctx, transform, allPts, 'rgba(150,150,150,0.2)', 1.5)
+      // Full trajectory as a smooth faded path (from patched-conic solver)
+      if (freeReturn) {
+        const allPts = [
+          ...freeReturn.departurePts,
+          ...freeReturn.flybyPts,
+          ...freeReturn.returnPts,
+        ]
+        drawOrbitPath(ctx, transform, allPts, 'rgba(150,150,150,0.15)', 1.5, [3 * dpr, 3 * dpr])
+      }
 
-      // Phase-colored traversed segments
+      // Phase-colored traversed segments (skip pre-TLI HEO points)
+      const tliTime = 25 * 3600
       let lastPhaseKey = ''
       let segPts: Array<{ x: number; y: number }> = []
       for (const p of trajectory) {
         if (p.t > met) break
+        if (p.t < tliTime) continue // skip HEO orbits
         if (p.phase !== lastPhaseKey && segPts.length > 0) {
           const phase = MISSION_PHASES.find((ph) => ph.key === lastPhaseKey)
           drawOrbitPath(ctx, transform, segPts, phase?.color ?? '#888', 2.5)
-          segPts = [segPts[segPts.length - 1]!] // overlap one point
+          segPts = [segPts[segPts.length - 1]!]
         }
         segPts.push({ x: p.x, y: p.y })
         lastPhaseKey = p.phase
@@ -79,11 +98,9 @@ export function RealMissionSection() {
       // Earth
       drawEarth(ctx, transform, R_EARTH, 8)
 
-      // Moon at current position
-      const moonAngularVelocity = 2 * Math.PI / (27.322 * 86400)
-      const moonAngle = met * moonAngularVelocity
-      const moonX = D_MOON * Math.cos(moonAngle)
-      const moonY = D_MOON * Math.sin(moonAngle)
+      // Moon at +x (co-rotating frame, matching the trajectory)
+      const moonX = D_MOON
+      const moonY = 0
       drawMoon(ctx, transform, moonX, moonY, R_MOON, 5)
 
       // Spacecraft
