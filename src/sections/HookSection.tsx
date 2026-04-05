@@ -56,18 +56,11 @@ export function HookSection() {
       transform.dpr = dpr
       transform.width = width
       transform.height = height
-      transform.viewRadius = D_MOON * 1.3
-      transform.centerX = D_MOON * 0.3
+      // Frame so Earth is near the left edge, Moon near the right
+      transform.viewRadius = D_MOON * 0.7
+      transform.centerX = D_MOON * 0.5
 
       drawStars(ctx, width, height, dpr, 35, 17)
-
-      // Moon's orbital arc (very faint)
-      const moonArc: Array<{ x: number; y: number }> = []
-      for (let i = 0; i <= 200; i++) {
-        const angle = (i / 200) * 2 * Math.PI
-        moonArc.push({ x: D_MOON * Math.cos(angle), y: D_MOON * Math.sin(angle) })
-      }
-      drawOrbitPath(ctx, transform, moonArc, 'rgba(200,200,200,0.15)', 1, [4 * dpr, 4 * dpr])
 
       // Draw the smooth free-return trajectory as a faded background path
       if (freeReturn) {
@@ -76,7 +69,7 @@ export function HookSection() {
           ...freeReturn.flybyPts,
           ...freeReturn.returnPts,
         ]
-        drawOrbitPath(ctx, transform, allPts, 'rgba(100,100,100,0.2)', 1.5, [3 * dpr, 3 * dpr])
+        drawOrbitPath(ctx, transform, allPts, 'rgba(100,100,100,0.15)', 1.5)
       }
 
       // Draw the traversed portion (from the time-sampled trajectory, post-TLI only)
