@@ -1,44 +1,44 @@
 /* ── Floating level switcher panel ── */
 .level-switcher {
   position: fixed;
-  right: 1.5rem;
+  right: 0.5rem;
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
-  background: rgba(255, 255, 248, 0.85);
+  background: rgba(255, 255, 248, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
-  padding: 0.75rem 0;
+  padding: 0.5rem 0;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-  min-width: 160px;
+  min-width: 0;
 }
 
 .level-switcher-header {
   font-family: 'ET Book', Palatino, 'Palatino Linotype', Georgia, serif;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #888;
-  padding: 0.25rem 1rem 0.5rem;
+  padding: 0.2rem 0.75rem 0.4rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .level-switcher-btn {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   width: 100%;
-  padding: 0.4rem 1rem;
+  padding: 0.3rem 0.75rem;
   border: none;
   background: transparent;
   cursor: pointer;
   font-family: 'ET Book', Palatino, 'Palatino Linotype', Georgia, serif;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #555;
   text-align: left;
   transition: color 0.15s ease, background 0.15s ease;
@@ -62,8 +62,8 @@
 /* ── Radio indicator ── */
 .level-switcher-indicator {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: 1.5px solid #aaa;
   flex-shrink: 0;
@@ -83,6 +83,32 @@
   white-space: nowrap;
 }
 
+/* ── Medium screens: compact — hide labels, just show dots ── */
+@media (max-width: 1200px) {
+  .level-switcher {
+    right: 0.25rem;
+    padding: 0.4rem 0;
+  }
+
+  .level-switcher-header {
+    display: none;
+  }
+
+  .level-switcher-btn {
+    padding: 0.35rem 0.5rem;
+    justify-content: center;
+  }
+
+  .level-switcher-label {
+    display: none;
+  }
+
+  .level-switcher-indicator {
+    width: 10px;
+    height: 10px;
+  }
+}
+
 /* ── Mobile: bottom bar ── */
 @media (max-width: 760px) {
   .level-switcher {
@@ -95,7 +121,7 @@
     border-radius: 12px 12px 0 0;
     flex-direction: row;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.5rem 0.25rem;
     gap: 0;
     min-width: 0;
     justify-content: space-around;
@@ -105,16 +131,16 @@
     border-bottom: none;
   }
 
-  .level-switcher-header {
-    display: none;
-  }
-
   .level-switcher-btn {
     flex-direction: column;
     align-items: center;
-    gap: 0.2rem;
-    padding: 0.4rem 0.3rem;
-    font-size: 0.7rem;
+    gap: 0.15rem;
+    padding: 0.4rem 0.2rem;
+    font-size: 0.65rem;
+  }
+
+  .level-switcher-label {
+    display: block;
   }
 
   .level-switcher-indicator {
