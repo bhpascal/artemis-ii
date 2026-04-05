@@ -13,7 +13,8 @@ import {
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
 import { circularVelocity } from '../physics/orbits'
-import { computeFreeReturn } from '../physics/patched-conics'
+import { solve } from '../physics/trajectory-solver'
+import { renderTrajectory } from '../physics/trajectory-renderer'
 import {
   computeArtemisTrajectory,
   interpolateTrajectory,
@@ -38,7 +39,8 @@ export function RealMissionSection() {
   // Smooth spatial path for the background (same as Hook)
   const freeReturn = useMemo(() => {
     const vCirc = circularVelocity(MU_EARTH, R_LEO)
-    return computeFreeReturn(vCirc + 3170, FLYBY_ALTITUDE)
+    const result = solve(vCirc + 3170, FLYBY_ALTITUDE)
+    return result.success ? renderTrajectory(result) : null
   }, [])
 
   const met = missionHours * 3600 // seconds

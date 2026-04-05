@@ -37,6 +37,13 @@ export function App() {
           />
         </header>
 
+        <p style={{ fontSize: '1.1rem', color: '#888', fontStyle: 'italic', marginBottom: '2rem' }}>
+          Use the panel on the right to switch between five explanation levels,
+          from <em>Curious Kid</em> to <em>B.S. Physics</em>. Every number
+          with a <span style={{ color: '#2E86C1', borderBottom: '1.5px dotted #2E86C1' }}>dotted underline</span> can
+          be dragged to change its value.
+        </p>
+
         <HookSection />
         <NewtonCannonSection />
         <TransferOrbitSection />

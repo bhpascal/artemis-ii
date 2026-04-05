@@ -15,7 +15,8 @@ import {
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
 import { circularVelocity } from '../physics/orbits'
-import { computeFreeReturn } from '../physics/patched-conics'
+import { solve } from '../physics/trajectory-solver'
+import { renderTrajectory } from '../physics/trajectory-renderer'
 import {
   computeArtemisTrajectory,
   interpolateTrajectory,
@@ -33,7 +34,8 @@ export function HookSection() {
   // Pre-compute the smooth spatial trajectory (for the background path)
   const freeReturn = useMemo(() => {
     const vCirc = circularVelocity(MU_EARTH, R_LEO)
-    return computeFreeReturn(vCirc + 3170, FLYBY_ALTITUDE)
+    const result = solve(vCirc + 3170, FLYBY_ALTITUDE)
+    return result.success ? renderTrajectory(result) : null
   }, [])
 
   // Pre-compute the time-sampled trajectory (for spacecraft position)

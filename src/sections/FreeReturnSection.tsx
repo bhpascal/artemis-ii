@@ -15,7 +15,8 @@ import {
   R_LEO,
 } from '../physics/constants'
 import { circularVelocity } from '../physics/orbits'
-import { computeFreeReturn } from '../physics/patched-conics'
+import { solve } from '../physics/trajectory-solver'
+import { renderTrajectory } from '../physics/trajectory-renderer'
 import { ViewTransform, drawLabel, drawLine } from '../rendering/canvas-utils'
 import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath } from '../rendering/orbit-renderer'
@@ -32,9 +33,16 @@ export function FreeReturnSection() {
   const flybyAltMeters = flybyAlt * 1000
 
   // Compute the trajectory (memoized — only recomputes when params change)
-  const trajectory = useMemo(
-    () => computeFreeReturn(injectionV, flybyAltMeters),
+  const solverResult = useMemo(
+    () => solve(injectionV, flybyAltMeters),
     [injectionV, flybyAltMeters]
+  )
+
+  const trajectory = useMemo(
+    () => solverResult.success
+      ? renderTrajectory(solverResult, showInertial ? 'inertial' : 'corotating')
+      : null,
+    [solverResult, showInertial]
   )
 
   // Main canvas: full Earth-Moon system with 3 trajectory segments
@@ -51,11 +59,11 @@ export function FreeReturnSection() {
       drawStars(ctx, width, height, dpr, 50, 73)
 
       if (trajectory) {
-        // Choose frame: co-rotating (figure-8) or inertial (teardrop)
-        const depPts = showInertial ? trajectory.inertialDeparturePts : trajectory.departurePts
-        const flyPts = showInertial ? trajectory.inertialFlybyPts : trajectory.flybyPts
-        const retPts = showInertial ? trajectory.inertialReturnPts : trajectory.returnPts
-        const mPos = showInertial ? trajectory.inertialMoonPos : trajectory.moonPos
+        // Points are already in the correct frame (renderer handles the toggle)
+        const depPts = trajectory.departurePts
+        const flyPts = trajectory.flybyPts
+        const retPts = trajectory.returnPts
+        const mPos = trajectory.moonPos
 
         // Trajectory segments
         drawOrbitPath(ctx, transform, depPts, '#2E86C1', 2.5)
@@ -68,18 +76,18 @@ export function FreeReturnSection() {
         // Status label — positioned at top center of canvas, not overlapping anything
         const statusY = 24 * dpr
         const statusX = width * dpr / 2
-        if (trajectory.hitsEarth) {
+        if (solverResult.hitsEarth) {
           drawLabel(ctx, 'Returns to Earth!', statusX, statusY, '#27AE60', 15 * dpr, 'center')
-        } else if (trajectory.returnPerigeeAlt > 200e3) {
+        } else if (solverResult.returnPerigeeAlt > 200e3) {
           drawLabel(ctx, 'Misses Earth — too shallow', statusX, statusY, '#E67E22', 15 * dpr, 'center')
-        } else if (trajectory.returnPerigeeAlt < 0) {
+        } else if (solverResult.returnPerigeeAlt < 0) {
           drawLabel(ctx, 'Too steep — hits the atmosphere', statusX, statusY, '#E74C3C', 15 * dpr, 'center')
         }
 
         // Turn angle — next to Moon, only at L3+
         if (level >= 3) {
           const [mx, my] = transform.toScreen(mPos.x, mPos.y)
-          drawLabel(ctx, `δ = ${(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°`, mx, my + 20 * dpr, '#E74C3C', 12 * dpr, 'center')
+          drawLabel(ctx, `δ = ${(solverResult.turnAngle * 180 / Math.PI).toFixed(1)}°`, mx, my + 20 * dpr, '#E74C3C', 12 * dpr, 'center')
         }
       } else {
         const statusX = width * dpr / 2
@@ -181,7 +189,7 @@ export function FreeReturnSection() {
         const [mx, my] = transform.toScreen(trajectory.moonPos.x, trajectory.moonPos.y)
         drawLabel(
           ctx,
-          `turn: ${(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°`,
+          `turn: ${(solverResult.turnAngle * 180 / Math.PI).toFixed(1)}°`,
           mx - 10 * dpr, my + 24 * dpr,
           '#888', 10 * dpr, 'center'
         )
@@ -190,7 +198,7 @@ export function FreeReturnSection() {
         if (level >= 4) {
           drawLabel(
             ctx,
-            `e = ${trajectory.flybyEccentricity.toFixed(3)}`,
+            `e = ${solverResult.flybyEccentricity.toFixed(3)}`,
             mx - 10 * dpr, my + 38 * dpr,
             '#888', 10 * dpr, 'center'
           )
@@ -399,21 +407,21 @@ export function FreeReturnSection() {
       <LevelBlock min={3}>
         {trajectory ? (
           <p>
-            {trajectory.hitsEarth ? (
+            {solverResult.hitsEarth ? (
               <>
                 The return trajectory targets Earth with a perigee
-                altitude of {(trajectory.returnPerigeeAlt / 1000).toFixed(0)} km —
+                altitude of {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km —
                 within the reentry corridor.
-                {level >= 4 && <> Turn angle: {(trajectory.turnAngle * 180 / Math.PI).toFixed(1)}°.
-                Hyperbolic eccentricity: {trajectory.flybyEccentricity.toFixed(3)}.</>}
+                {level >= 4 && <> Turn angle: {(solverResult.turnAngle * 180 / Math.PI).toFixed(1)}°.
+                Hyperbolic eccentricity: {solverResult.flybyEccentricity.toFixed(3)}.</>}
               </>
-            ) : trajectory.returnPerigeeAlt > 200e3 ? (
+            ) : solverResult.returnPerigeeAlt > 200e3 ? (
               <>
                 The return trajectory misses Earth — perigee
-                is {(trajectory.returnPerigeeAlt / 1000).toFixed(0)} km altitude,
+                is {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km altitude,
                 too high for atmospheric capture. Try a lower flyby altitude.
               </>
-            ) : trajectory.returnPerigeeAlt < 0 ? (
+            ) : solverResult.returnPerigeeAlt < 0 ? (
               <>
                 The return trajectory hits Earth too steeply (perigee
                 below surface). The turn angle is too large. Try a higher
@@ -422,7 +430,7 @@ export function FreeReturnSection() {
             ) : (
               <>
                 The return trajectory skims the atmosphere
-                at {(trajectory.returnPerigeeAlt / 1000).toFixed(0)} km.
+                at {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km.
                 Adjust the flyby altitude to target 50–200 km.
               </>
             )}
@@ -435,9 +443,9 @@ export function FreeReturnSection() {
       <LevelBlock max={2}>
         {trajectory ? (
           <p>
-            {trajectory.hitsEarth ? (
+            {solverResult.hitsEarth ? (
               <>The spaceship comes back to Earth! That is the sweet spot!</>
-            ) : trajectory.returnPerigeeAlt > 200e3 ? (
+            ) : solverResult.returnPerigeeAlt > 200e3 ? (
               <>The spaceship misses Earth. Try bringing it closer to the Moon.</>
             ) : (
               <>Too close! The spaceship comes in too steep. Move it farther from the Moon.</>
