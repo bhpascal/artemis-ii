@@ -154,32 +154,54 @@ export function RealMissionSection() {
         </p>
       </LevelBlock>
 
-      <LevelBlock min={3} max={4}>
+      <LevelBlock level={3}>
         <p>
           The complete Artemis II trajectory, computed from mission
-          parameters using the patched-conic model. Scrub through
-          all ten days and watch the velocity profile — the spacecraft
-          slows as it climbs away from Earth, then accelerates as it
-          falls back.
+          parameters. Scrub through all ten days and watch the velocity
+          profile — the spacecraft slows as it climbs away from Earth,
+          then accelerates as it falls back.
           <Sidenote number={7}>
             In practice, 3–4 trajectory correction burns adjust for
-            solar perturbation, J2 oblateness, and measurement
-            uncertainty. The patched-conic model you see is
-            within ~1% of the actual ephemeris.
+            perturbations. The patched-conic model you see is within
+            ~1% of the actual trajectory.
+          </Sidenote>
+        </p>
+      </LevelBlock>
+
+      <LevelBlock level={4}>
+        <p>
+          As you scrub the timeline, watch the velocity — it tells the
+          story of the spacecraft's energy. After TLI, almost all the
+          kinetic energy is gradually converted into gravitational
+          potential energy as Orion climbs away from Earth. The speed
+          drops from nearly 11 km/s to under 1 km/s over several days.
+          Near the Moon, watch for the spike: the Moon's gravity
+          accelerates the spacecraft during approach, the flyby redirects
+          the velocity, and the spacecraft accelerates again falling back
+          toward Earth. The reentry velocity is nearly the same as the
+          post-TLI velocity — the trip is almost perfectly reversible.
+          <Sidenote number={7}>
+            The only energy input was the single TLI burn. The
+            gravitational slingshot redirects but adds no net energy.
           </Sidenote>
         </p>
       </LevelBlock>
 
       <LevelBlock level={5}>
         <p>
-          The trajectory below uses the patched-conic approximation
-          with parameters matched to the Artemis II mission profile.
-          Real mission design uses numerical integration of the full
-          force model (Earth J2–J6, lunar gravity field, solar gravity,
-          solar radiation pressure). The patched-conic model captures
-          the qualitative dynamics and is accurate to ~1% for
-          Earth-Moon transfers. Scrub the timeline to explore the full
-          state evolution.
+          Artemis II is the first crewed free-return since Apollo —
+          simultaneously a trajectory test and a vehicle test. The
+          patched-conic model predicts the trajectory well, but the
+          real mission accumulates perturbations over ten days: solar
+          gravity (which breaks the symmetry between outbound and return
+          legs), Earth's J2 oblateness (which precesses the orbit plane),
+          and solar radiation pressure on Orion's 63-foot solar arrays.
+          The correction budget is 3–4 small burns totaling ~10 m/s.
+          Here is the number that should surprise you: a 1 m/s error at
+          TLI shifts the return perigee by approximately 100 km. That
+          sensitivity — a consequence of the long lever arm between TLI
+          and reentry, amplified by the lunar flyby — is why navigation
+          accuracy matters more than propulsion accuracy on this mission.
         </p>
       </LevelBlock>
 

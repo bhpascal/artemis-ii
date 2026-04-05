@@ -278,7 +278,7 @@ export function FreeReturnSection() {
         </p>
       </LevelBlock>
 
-      <LevelBlock min={3} max={4}>
+      <LevelBlock level={3}>
         <p>
           Here is the beautiful part. After the trans-lunar injection
           burn, the spacecraft follows a path that loops around the
@@ -294,23 +294,50 @@ export function FreeReturnSection() {
         </p>
       </LevelBlock>
 
+      <LevelBlock level={4}>
+        <p>
+          Here is the key insight that makes the free return work: in
+          the Moon's reference frame, the spacecraft's <em>speed</em> is
+          unchanged by the flyby. The Moon's gravity can redirect the
+          spacecraft — bend its path by a large angle — but it cannot
+          add or remove speed relative to the Moon itself. So what is
+          the trick? Changing the <em>direction</em> of the velocity
+          vector in the Moon's frame changes its <em>magnitude</em> in
+          Earth's frame. The spacecraft approaches from one direction
+          and leaves in another; when you transform back to the
+          Earth-centered frame, the speed relative to Earth is different.
+          This frame transformation is the entire mechanism of the
+          gravitational slingshot.
+          <Sidenote number={6}>
+            In April 1970, an oxygen tank exploded on Apollo 13,
+            disabling the main engine. The crew survived because they
+            were on a free-return trajectory. The Moon brought them home.
+          </Sidenote>
+        </p>
+      </LevelBlock>
+
       <LevelBlock level={5}>
         <p>
-          The free-return trajectory decomposes, within the patched-conic
-          framework, into three Keplerian arcs: an Earth-departure
-          ellipse, a lunar hyperbolic flyby, and an Earth-return ellipse.
-          At each sphere-of-influence boundary, position and velocity
-          vectors are "patched" via frame transformation. The critical
-          constraint: the return perigee must fall within the atmospheric
-          entry corridor (50–200 km altitude). The flyby periapsis
-          distance is the single free parameter.
+          The free-return trajectory is a three-body phenomenon that
+          the patched-conic approximation captures remarkably well.
+          The reason is geometric: the Moon's sphere of influence
+          (~66,000 km) is small compared to the Earth-Moon distance
+          (384,400 km), so the abrupt frame switch at the SOI boundary
+          introduces only a small error. The deeper reason this
+          trajectory exists at all is that gravity is conservative. The
+          spacecraft's total energy is fixed after TLI. The frame
+          transformations at the SOI boundaries reshuffle kinetic and
+          potential energy between the Earth and Moon contributions but
+          preserve the total. The return to Earth is not a fine-tuned
+          miracle — it is a consequence of the energy level being high
+          enough to reach the Moon but too low to escape.
           <Sidenote number={6}>
-            Apollo 13 (1970) demonstrated the safety value of free-return
-            trajectories. The Jacobi constant of the CR3BP provides a
-            deeper understanding: in the rotating frame, the zero-velocity
-            curves constrain the accessible region. The free-return
-            exploits a trajectory that necessarily returns to the
-            Earth's Hill sphere.
+            Apollo 13 demonstrated the robustness of free-return
+            trajectories. The Jacobi constant of the circular restricted
+            three-body problem makes this precise: the energy level that
+            permits passage from Earth's vicinity through the L1 neck
+            to the Moon's vicinity also permits return. Small
+            perturbations cannot close the neck.
           </Sidenote>
         </p>
       </LevelBlock>
@@ -430,27 +457,35 @@ export function FreeReturnSection() {
 
       <LevelBlock level={4}>
         <p>
-          The turn angle δ depends on the hyperbolic
-          eccentricity: sin(δ/2) = 1/<var>e</var>.
-          Since <var>e</var> = 1 + r<sub>p</sub>v<sub>∞</sub>²/μ,
-          lowering the flyby altitude (smaller r<sub>p</sub>)
-          <em>decreases</em> the eccentricity toward 1. As <var>e</var> → 1,
-          1/<var>e</var> → 1, and δ → 180°. So closer flybys produce
-          <em>larger</em> turn angles — more bending. The spacecraft
-          does a near-U-turn at very low altitudes.
+          The turn angle equation captures a competition between two
+          effects. A faster approach (larger v<sub>∞</sub>) means the
+          spacecraft spends less time in the Moon's gravity well, so it
+          gets deflected less: higher speed, less bending. A closer pass
+          (smaller r<sub>p</sub>) means stronger gravitational force
+          along more of the trajectory: closer, more bending. The
+          hyperbolic eccentricity encodes both in a single number.
+          When <var>e</var> is close to 1, the turn angle approaches
+          180° — a near-U-turn. When <var>e</var> is large, the Moon
+          barely deflects the path.
         </p>
       </LevelBlock>
 
       <LevelBlock level={5}>
         <p>
-          In the CR3BP framework, this trajectory approximates a
-          heteroclinic connection between the Earth's and Moon's Hill
-          spheres. The patched-conic model is accurate to ~1% for
-          Earth-Moon transfers. Modern mission design uses full
-          numerical integration with solar gravity, Earth's J2
-          oblateness, and solar radiation pressure — those perturbations
-          are why trajectory correction burns exist. The Artemis II
-          trajectory was designed with 3–4 small TCMs on the return leg.
+          In the circular restricted three-body problem, the Jacobi
+          constant C<sub>J</sub> is the one quantity conserved in the
+          rotating frame — it constrains where the spacecraft <em>can</em> go.
+          The zero-velocity curves are the boundaries of the accessible
+          region for a given C<sub>J</sub>. At low energy, Earth and
+          Moon are surrounded by separate forbidden regions. At a
+          critical energy level, the forbidden regions open a narrow
+          neck near L1, and transfer becomes possible. The free-return
+          trajectory exists just above this threshold: C<sub>J</sub> permits
+          passage from Earth's vicinity through the neck to the Moon's
+          vicinity and back. This is the deep reason the free return is
+          a robust safety feature — it is not a knife-edge trajectory
+          but a topological consequence of the energy level connecting
+          the two regions.
         </p>
       </LevelBlock>
     </section>

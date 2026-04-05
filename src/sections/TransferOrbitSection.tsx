@@ -178,22 +178,22 @@ export function TransferOrbitSection() {
 
       <LevelBlock level={5}>
         <p>
-          From LEO at r = {(R_LEO / 1000).toFixed(0)} km,
-          v<sub>circ</sub> = {V_CIRC_LEO.toFixed(1)} m/s. The vis-viva
-          equation gives us a direct map from Δv to apoapsis: after
-          adding Δv at periapsis, the new semi-major
-          axis <var>a</var> = 1/(2/<var>r</var> − <var>v</var>²/<var>μ</var>),
-          and the apoapsis r<sub>a</sub> = 2<var>a</var> − <var>r</var>.
-          Reaching lunar distance (384,400 km) requires
-          Δv ≈ 3,130 m/s from LEO. Artemis II started from a
-          higher orbit, needing only 388 m/s from the ESM.
+          The transfer orbit problem is fundamentally about energy
+          budgets. A Hohmann transfer — two tangential burns at
+          periapsis and apoapsis — is the minimum-energy two-impulse
+          transfer between coplanar circular orbits. But Artemis II
+          does not use a Hohmann transfer, because the Moon is not a
+          parking orbit to circularize into. The free-return trajectory
+          requires slightly higher TLI energy (the excess ensures the
+          correct flyby geometry). The multi-burn approach — ICPS
+          raises the orbit, then ESM performs TLI — is energetically
+          equivalent to a single burn from LEO, but buys the crew time
+          for systems checkout in a regime where an abort to Earth is
+          still straightforward.
           <Sidenote number={4}>
-            The energy budget is path-independent: the total specific
-            energy at TLI equals what a single 3,130 m/s burn from LEO
-            would provide. The multi-burn strategy buys crew checkout
-            time without spending extra propellant (the Oberth effect
-            makes low-altitude burns slightly more efficient, but the
-            difference is small for these orbit energies).
+            Conservation of energy does not care about the delivery
+            schedule. The total specific energy at TLI equals what a
+            single 3,130 m/s burn from LEO would provide.
           </Sidenote>
         </p>
       </LevelBlock>
@@ -280,19 +280,29 @@ export function TransferOrbitSection() {
       <LevelBlock min={4}>
         <p>
           <LevelText level={4}>
-            Notice that doubling the delta-v more than doubles the apoapsis.
-            This is because the orbital energy scales as v², so each
-            additional m/s contributes more energy at higher velocities —
-            a consequence of the Oberth effect.
+            Notice the asymmetry: the same Δv produces a much larger
+            orbit change when applied at periapsis than at apoapsis.
+            This is the Oberth effect. Kinetic energy goes
+            as <var>v</var>², so adding 100 m/s to a spacecraft already
+            moving at 7,000 m/s adds far more kinetic energy than adding
+            100 m/s to one moving at 1,000 m/s. The rocket does not care
+            how fast it is already going — it produces the same Δv from
+            the same fuel. But the orbit does care, because orbital energy
+            depends on <var>v</var>², not <var>v</var>.
           </LevelText>
           <LevelText level={5}>
-            The Oberth effect: Δε = v·Δv + Δv²/2. The first term
-            dominates when v ≫ Δv. Burning at periapsis (high v)
-            extracts more orbital energy per unit of propellant than
-            burning at apoapsis (low v). This is why all major burns
-            in mission design happen at periapsis. It is also why the
-            Hohmann transfer is minimum-energy: it uses exactly two
-            periapsis burns.
+            The Oberth effect is visible in the vis-viva equation's
+            structure: Δε = <var>v</var>·Δ<var>v</var> + Δ<var>v</var>²/2.
+            Watch the interactive as the orbit approaches lunar distance:
+            the apoapsis becomes increasingly sensitive to small changes
+            in Δv. This is also where the patched-conic approximation
+            begins to strain — the real trajectory transitions smoothly
+            from Earth-dominated to Moon-influenced, but our model
+            switches instantaneously at the sphere of influence boundary.
+            The discontinuity is small (the Moon's SOI subtends only
+            ~17% of the Earth-Moon distance), which is why patched conics
+            works — but the error concentrates exactly where the physics
+            is most interesting.
           </LevelText>
         </p>
       </LevelBlock>

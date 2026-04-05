@@ -140,7 +140,7 @@ export function HookSection() {
         </p>
       </LevelBlock>
 
-      <LevelBlock min={3} max={4}>
+      <LevelBlock level={3}>
         <p>
           Right now, as you read this, four astronauts are falling toward
           the Moon. They left Earth on April 1, 2026, aboard the Orion
@@ -154,15 +154,35 @@ export function HookSection() {
         </p>
       </LevelBlock>
 
+      <LevelBlock level={4}>
+        <p>
+          Right now, four astronauts are coasting through cislunar
+          space on a free-return trajectory — decelerating the entire
+          way out as Earth's gravity claws back the kinetic energy their
+          trans-lunar injection burn gave them.
+          {currentPoint && currentPoint.distEarth > R_EARTH * 2 && (
+            <> At {(currentPoint.distEarth / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km
+            from Earth, moving
+            at {(currentPoint.speed / 1000).toFixed(1)} km/s — exactly
+            what the vis-viva equation predicts for their current distance
+            on an orbit with this semi-major axis.</>
+          )}
+        </p>
+      </LevelBlock>
+
       <LevelBlock level={5}>
         <p>
-          At {formatMET(met)} MET ({formatCalendarDate(met)}),
-          Orion {missionOver ? 'completed' : 'is on'} a free-return
-          trajectory with perilune ≈ 6,500 km.
-          {currentPoint && (
-            <> Current state: r = {(currentPoint.distEarth / 1000).toFixed(0)} km,
-            v = {(currentPoint.speed).toFixed(0)} m/s.
-            Phase: {currentPoint.phase}.</>
+          At {formatMET(met)} MET, Orion is in the transition between
+          two gravitational regimes. Earth still dominates, but the
+          Moon's tidal influence is growing — and the patched-conic
+          approximation is at its least accurate right here in the gap
+          between domains.
+          {currentPoint && currentPoint.distEarth > R_EARTH * 2 && (
+            <> The spacecraft is near its velocity minimum on the
+            outbound leg, trading the last of its kinetic energy for
+            gravitational potential
+            — {(currentPoint.speed / 1000).toFixed(1)} km/s
+            at {(currentPoint.distEarth / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km.</>
           )}
         </p>
       </LevelBlock>

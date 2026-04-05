@@ -195,17 +195,22 @@ export function NewtonCannonSection() {
 
       <LevelBlock level={5}>
         <p>
-          Newton's cannon is the canonical introduction, but the deeper
-          insight is variational: the orbit emerges from the
-          Lagrangian <var>L</var> = <var>T</var> − <var>V</var> in polar
-          coordinates. The cyclic coordinate θ immediately yields angular
-          momentum conservation; the radial equation gives the orbit
-          equation via the Binet substitution. We take the energy approach
-          instead — it leads directly to the vis-viva equation.
+          Newton's cannon is a statement about initial conditions in a
+          central force field, but the real insight is structural: the
+          orbit equation falls out of conservation laws alone, without
+          solving a differential equation. Write the Lagrangian in polar
+          coordinates — θ is immediately cyclic, giving angular momentum
+          conservation for free. The radial equation then reduces to a
+          one-dimensional energy problem in an effective potential. Two
+          conserved quantities — energy and angular momentum — are enough
+          to determine the full trajectory in the two-body problem.
+          Vis-viva is the energy integral expressed in observable
+          quantities.
           <Sidenote number={2}>
             Newton's <em>Principia</em> (1687) used geometric arguments.
             The Lagrangian formulation came a century later with Euler and
-            Lagrange. Both arrive at the same orbits.
+            Lagrange. Both arrive at the same orbits — because both
+            exploit the same conservation laws.
           </Sidenote>
         </p>
       </LevelBlock>
@@ -253,13 +258,18 @@ export function NewtonCannonSection() {
             equation — the fundamental equation of orbital mechanics:
           </LevelText>
           <LevelText level={4}>
-            The vis-viva equation follows directly from conservation of
-            energy. Total specific energy (kinetic + potential) is constant
-            along any Keplerian orbit:
+            The orbit shape emerges from a single fact: total mechanical
+            energy is conserved. A cannonball at distance <var>r</var> with
+            speed <var>v</var> has specific
+            energy ε = <var>v</var>²/2 − <var>μ</var>/<var>r</var>,
+            which also equals −<var>μ</var>/(2<var>a</var>). This means
+            the orbit's size is set entirely by the energy — you do not
+            need to know the direction, only the speed and the distance:
           </LevelText>
           <LevelText level={5}>
-            Vis-viva is the first integral of the two-body problem. From
-            the specific energy ε = v²/2 − μ/r = −μ/(2a), we get:
+            Vis-viva is the energy integral of the two-body problem,
+            expressed in observable quantities. From
+            ε = <var>v</var>²/2 − <var>μ</var>/<var>r</var> = −<var>μ</var>/(2<var>a</var>):
           </LevelText>
         </p>
 
@@ -275,22 +285,30 @@ export function NewtonCannonSection() {
 
       <LevelBlock level={4}>
         <p>
-          Where <var>a</var> is the semi-major axis. For a circular
-          orbit, <var>r</var> = <var>a</var>, so <var>v</var> = √(<var>μ</var>/<var>r</var>).
-          For escape, <var>a</var> → ∞,
-          so <var>v</var> = √(2<var>μ</var>/<var>r</var>) — exactly √2
-          times the circular velocity.
+          Set <var>a</var> = <var>r</var> and you get the circular
+          velocity: <var>v</var> = √(<var>μ</var>/<var>r</var>).
+          Let <var>a</var> → ∞ — an orbit so large it never comes
+          back — and the 1/<var>a</var> term vanishes,
+          leaving <var>v</var> = √(2<var>μ</var>/<var>r</var>). That
+          factor of √2 is not a coincidence. It says escaping requires
+          exactly twice the kinetic energy of a circular orbit at the
+          same altitude. Every m/s you add beyond circular velocity
+          stretches the apoapsis; the escape threshold is where the
+          apoapsis reaches infinity.
         </p>
       </LevelBlock>
 
       <LevelBlock level={5}>
         <p>
           The ratio <var>v</var><sub>esc</sub>/<var>v</var><sub>circ</sub> = √2
-          is geometry-independent: it holds at any altitude, for any central
-          body. It is a consequence of the virial theorem for 1/r² forces.
-          The factor √2 also appears as the ratio of the escape energy
-          to the circular orbit energy, connecting to the
-          Tisserand parameter used in three-body dynamics.
+          holds at any altitude around any spherically symmetric body —
+          a clue that something deeper is going on. The virial theorem
+          for 1/<var>r</var>² forces says the time-averaged kinetic energy
+          of a bound orbit is exactly −½ the time-averaged potential
+          energy. A circular orbit saturates this instantly (no averaging
+          needed), so its kinetic energy is <var>μ</var>/(2<var>r</var>).
+          Escape means zeroing the total energy, which means doubling
+          the kinetic energy — hence √2.
         </p>
       </LevelBlock>
     </section>
