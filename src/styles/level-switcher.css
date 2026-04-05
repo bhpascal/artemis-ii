@@ -1,7 +1,7 @@
 /* ── Floating level switcher panel ── */
 .level-switcher {
   position: fixed;
-  right: 0.5rem;
+  right: 1.5rem;
   top: 50%;
   transform: translateY(-50%);
   z-index: 100;
@@ -83,10 +83,16 @@
   white-space: nowrap;
 }
 
-/* ── Medium screens: compact — hide labels, just show dots ── */
+/* Short labels hidden by default on wide screens (full labels shown) */
+.level-switcher-short {
+  display: none;
+}
+
+/* ── Medium screens: compact with short labels ── */
 @media (max-width: 1200px) {
   .level-switcher {
-    right: 0.25rem;
+    /* Push left of the scrollbar (~18px) */
+    right: 1.25rem;
     padding: 0.4rem 0;
   }
 
@@ -95,17 +101,26 @@
   }
 
   .level-switcher-btn {
-    padding: 0.35rem 0.5rem;
-    justify-content: center;
+    padding: 0.3rem 0.5rem;
+    gap: 0.3rem;
+    font-size: 0.7rem;
   }
 
+  /* Hide full labels, show short abbreviations */
   .level-switcher-label {
     display: none;
   }
 
+  .level-switcher-short {
+    display: inline;
+    font-size: 0.65rem;
+    color: inherit;
+    letter-spacing: 0.02em;
+  }
+
   .level-switcher-indicator {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
 }
 
@@ -139,8 +154,13 @@
     font-size: 0.65rem;
   }
 
-  .level-switcher-label {
+  /* On mobile bottom bar, show short labels */
+  .level-switcher-short {
     display: block;
+  }
+
+  .level-switcher-label {
+    display: none;
   }
 
   .level-switcher-indicator {

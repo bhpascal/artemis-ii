@@ -9,6 +9,14 @@ export const LEVEL_LABELS: Record<Level, string> = {
   5: 'B.S. Physics',
 }
 
+export const LEVEL_SHORT: Record<Level, string> = {
+  1: 'Kid',
+  2: 'Mid',
+  3: 'HS',
+  4: 'UG',
+  5: 'BS',
+}
+
 export const DEFAULT_LEVEL: Level = 3
 
 export interface ScrubableConfig {

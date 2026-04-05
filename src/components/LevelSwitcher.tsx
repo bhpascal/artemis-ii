@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useLevel } from '../hooks/useLevel'
-import { LEVEL_LABELS, type Level } from '../types'
+import { LEVEL_LABELS, LEVEL_SHORT, type Level } from '../types'
 import '../styles/level-switcher.css'
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5]
@@ -38,11 +38,14 @@ export function LevelSwitcher() {
           className={`level-switcher-btn ${l === level ? 'active' : ''}`}
           role="radio"
           aria-checked={l === level}
+          aria-label={LEVEL_LABELS[l]}
           tabIndex={l === level ? 0 : -1}
+          title={LEVEL_LABELS[l]}
           onClick={() => setLevel(l)}
         >
           <span className="level-switcher-indicator" />
           <span className="level-switcher-label">{LEVEL_LABELS[l]}</span>
+          <span className="level-switcher-short">{LEVEL_SHORT[l]}</span>
         </button>
       ))}
     </div>
