@@ -57,7 +57,7 @@ export function App() {
               Bret Victor
             </a>{' '}
             and{' '}
-            <a href="https://explorabl.es" target="_blank" rel="noopener noreferrer">
+            <a href="https://ncase.me" target="_blank" rel="noopener noreferrer">
               Nicky Case
             </a>.
             Orbital mechanics computed from first principles using the
@@ -69,6 +69,7 @@ export function App() {
           <p style={{ fontSize: '0.95rem', color: '#aaa', marginTop: '0.5rem' }}>
             Every number you can drag is real physics. Every orbit is computed,
             not drawn. If you find an error, the equations are in the source.
+            Read about <a href="/behind-the-scenes">the mistakes we made building this</a>.
           </p>
         </footer>
       </Article>

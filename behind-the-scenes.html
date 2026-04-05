@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Behind the Scenes — Artemis II</title>
+    <meta name="description" content="The mistakes, dead ends, and debugging that went into building an explorable explanation of orbital mechanics." />
+  </head>
+  <body>
+    <article class="article">
+      <div class="article-body">
+        <h1>Behind the Scenes</h1>
+        <p class="subtitle">
+          The mistakes we made building this thing
+        </p>
+
+        <p>
+          The main page presents orbital mechanics as if we understood it all
+          along. We didn't. This page tells the real story: the bugs, the wrong
+          assumptions, and the moments where the physics was trying to tell us
+          something and we weren't listening.
+        </p>
+        <p>
+          Mythbusters rules apply. Failure then eventual success teaches more
+          than effortless one-shots.
+        </p>
+
+        <h2>The Figure-8 That Wouldn't</h2>
+
+        <p>
+          The classic image of a free-return trajectory is a figure-8: the
+          spacecraft loops out from Earth, swings around the Moon, and comes back
+          in a graceful crossing pattern. In a <em>co-rotating frame</em> — a
+          viewpoint that rotates with the Moon so the Moon stays fixed on the
+          right — this shape emerges naturally.
+        </p>
+        <p>
+          Our first attempt drew a blob. The departure arc went up and to the
+          right, the flyby arc looped around the Moon, but the return arc came
+          back on the <em>same side</em>, producing a teardrop instead of a
+          figure-8. Three separate fixes were needed before it worked.
+        </p>
+
+        <h3>Attempt 1: Wrong reference frame</h3>
+        <p>
+          The trajectory was being drawn in the inertial frame — the frame where
+          the Moon moves. In this frame, the figure-8 doesn't exist. The
+          departure arc, flyby arc, and return arc are just three separate
+          ellipses and a hyperbola pointing in different directions. The co-rotating
+          frame rotation was missing entirely.
+        </p>
+        <p>
+          <strong>Fix:</strong> Rotate every rendered point by <var>−θ</var><sub>Moon</sub>,
+          the negative of the Moon's angular position. This pins the Moon to the
+          +x axis and reveals the figure-8.
+        </p>
+        <p>
+          But it still looked wrong. Teardrop, not figure-8.
+        </p>
+
+        <h3>Attempt 2: Wrong turn direction</h3>
+        <p>
+          A lunar flyby can bend the trajectory clockwise or counterclockwise,
+          depending on whether the spacecraft passes in front of or behind the
+          Moon. The <em>angular momentum</em> of the approach determines this:
+          L = r &times; v. Positive L means the spacecraft curves counterclockwise.
+        </p>
+        <p>
+          We had the sign right in the solver but were applying it inconsistently
+          in the renderer. The flyby arc curved the right way, but the exit
+          position was placed on the wrong side. Result: the return arc departed
+          from the wrong point on the Moon's sphere of influence, and the
+          trajectory crossed itself awkwardly instead of forming a clean loop.
+        </p>
+        <p>
+          <strong>Fix:</strong> Propagate the turn sign consistently through
+          both the exit velocity direction <em>and</em> the exit position angle.
+        </p>
+        <p>
+          Better. But the departure and return arcs still overlapped instead of
+          separating into two lobes.
+        </p>
+
+        <h3>Attempt 3: Solver and renderer were tangled</h3>
+        <p>
+          This was the real problem. The solver was computing orbital elements
+          <em>and</em> generating render points in the same function. The render
+          points were being generated in a mix of reference frames — some in the
+          perifocal frame, some in the inertial frame, some in the co-rotating
+          frame. The coordinate transformations accumulated errors.
+        </p>
+        <p>
+          <strong>Fix:</strong> Rip them apart. The solver became a pure physics
+          module: it takes injection velocity and flyby altitude, returns orbital
+          elements and state vectors. The renderer became a separate module: it
+          takes solver output and a reference frame choice, returns drawable point
+          arrays. With the separation, the coordinate transforms became obvious
+          and the figure-8 appeared immediately.
+        </p>
+
+        <h2>The 78-Degree Lie</h2>
+
+        <p>
+          The flyby computation had three physics bugs, and they were textbook
+          bugs — the kind you get from following a textbook too literally.
+        </p>
+        <p>
+          Standard orbital mechanics texts describe a planetary flyby like this:
+          the spacecraft approaches from infinity with some velocity
+          <var>v</var><sub>∞</sub>, the planet's gravity deflects it by a turn
+          angle δ = 2 arcsin(1/<var>e</var>), and it departs toward infinity
+          with the same speed in a new direction. Simple, elegant, and
+          <em>wrong for our case</em>.
+        </p>
+
+        <h3>Bug 1: Speed at the boundary ≠ speed at infinity</h3>
+        <p>
+          The textbook algorithm assumes you're measuring the spacecraft's
+          velocity infinitely far from the planet. We were measuring it at the
+          Moon's sphere of influence boundary — 66,183 km from the Moon's center.
+          At that distance, the Moon's gravity has already accelerated the
+          spacecraft. The speed at the SOI boundary is about 80 m/s faster than
+          the true <var>v</var><sub>∞</sub>.
+        </p>
+        <p>
+          80 m/s doesn't sound like much when the spacecraft is moving at
+          ~950 m/s relative to the Moon. But it compounds: the wrong speed gives
+          the wrong hyperbolic semi-major axis, the wrong eccentricity, and the
+          wrong turn angle — a cascade of errors from one wrong number.
+        </p>
+        <p>
+          <strong>Fix:</strong> Use the vis-viva equation at the actual position:
+          <var>a</var> = 1 / (2/<var>r</var> − <var>v</var><sup>2</sup>/μ).
+          This gives the correct orbit from the actual state, no infinity
+          assumptions needed.
+        </p>
+
+        <h3>Bug 2: The asymptotic turn angle doesn't work at finite distance</h3>
+        <p>
+          The turn angle δ = 2 arcsin(1/<var>e</var>) describes the deflection
+          between the two <em>asymptotes</em> of the hyperbola — the directions
+          the spacecraft would be heading if you extended its path to infinity.
+          At the SOI boundary, the spacecraft is still on the hyperbola, not at
+          infinity. Its actual velocity direction differs from the asymptotic
+          direction.
+        </p>
+        <p>
+          We were rotating the SOI-boundary velocity by the asymptotic angle.
+          The resulting exit velocity pointed <strong>78 degrees</strong> away from
+          where it should have been. The return orbit went completely haywire.
+        </p>
+        <p>
+          <strong>Fix:</strong> Don't use the turn angle at all. Instead, compute
+          the <em>eccentricity vector</em> from the actual state at SOI entry.
+          This gives the exact orientation of the hyperbolic orbit. Find the true
+          anomaly at entry, mirror it for exit (symmetric flyby), and compute the
+          exact exit state from the orbital equations. No approximations.
+        </p>
+
+        <h3>Bug 3: Wrong exit speed</h3>
+        <p>
+          The old code set the exit speed equal to <var>v</var><sub>∞</sub>.
+          But the spacecraft is still inside the Moon's gravity well at the SOI
+          boundary, so it should be moving faster than <var>v</var><sub>∞</sub> —
+          the exact same speed it had when it entered (conservation of energy at
+          equal distances from the Moon). The fix for Bug 2 resolved this
+          automatically: computing the exact state at the exit true anomaly gives
+          the correct speed.
+        </p>
+
+        <h2>The Slider That Lied</h2>
+
+        <p>
+          After fixing the flyby physics, a new problem appeared: the "flyby
+          altitude" slider didn't actually control the flyby altitude.
+        </p>
+        <p>
+          In the old (buggy) code, the flyby altitude was a free parameter. You
+          passed it into the solver, and the solver used it to compute the
+          hyperbolic orbit's eccentricity. But with correct physics, the flyby
+          periapsis isn't a free parameter — it's <em>determined</em> by the
+          approach geometry. The spacecraft enters the SOI at some position with
+          some velocity, and those two vectors fully define the hyperbolic orbit,
+          including its closest approach distance. The slider was requesting a
+          periapsis of 8,237 km, but the actual orbit had a periapsis of
+          ~54,000 km.
+        </p>
+        <p>
+          <strong>Fix:</strong> Add a targeting loop. The departure orbit's
+          orientation (ω, the argument of periapsis) controls where the spacecraft
+          enters the Moon's SOI, which controls the approach geometry, which
+          controls the flyby periapsis. By scanning ω over a ±15° range and
+          bisecting to find the value that produces the desired periapsis, the
+          slider works again — genuinely this time.
+        </p>
+
+        <h2>2D Isn't 3D</h2>
+
+        <p>
+          With all the physics correct, we expected the default parameters —
+          Δ<var>v</var> = 3,133 m/s, flyby altitude 6,500 km, matching the real
+          Artemis II mission — to produce a beautiful free-return trajectory
+          ending in a 37 km reentry. The return perigee was 91,325 km. Not even
+          close.
+        </p>
+        <p>
+          We spent a while hunting for the right analytical solution before
+          realizing: we have the actual Artemis II mission data. The real mission
+          obviously works. We don't need to derive the parameters — we can
+          back-derive them from reality.
+        </p>
+        <p>
+          A brute-force sweep of the parameter space found the answer: in a 2D
+          patched-conic model, a valid free return at Δ<var>v</var> = 3,140 m/s
+          occurs at a flyby altitude of ~10,500 km, not 6,500 km. The return
+          perigee at those parameters: 37 km. Right in the reentry corridor.
+        </p>
+        <p>
+          Why the difference? The real Artemis II trajectory is three-dimensional.
+          The spacecraft approaches the Moon from below the orbital plane, loops
+          over the far side, and returns above the plane. This out-of-plane
+          component provides additional deflection that a 2D model can't capture.
+          In 2D, you need a wider flyby (more time in the Moon's gravity well) to
+          get the same total deflection.
+        </p>
+        <p>
+          The lesson: a simplified model isn't wrong, it's <em>simplified</em>.
+          You calibrate it against reality and understand where it diverges.
+          The 2D patched-conic model teaches the same physics as the real
+          trajectory — conservation of energy, gravity assists, the geometry of
+          free returns — it just does it at slightly different parameter values.
+        </p>
+
+        <h2>What We Learned</h2>
+
+        <p>
+          Every bug in this project came from the same mistake: applying a
+          formula outside its domain of validity. The textbook flyby equations
+          assume infinite distance; we used them at finite distance. The turn
+          angle describes asymptotic behavior; we applied it at the SOI boundary.
+          The 2D model captures the essential physics; we expected it to reproduce
+          3D parameter values.
+        </p>
+        <p>
+          The fixes all had the same shape too: go back to first principles. Don't
+          rotate by the turn angle — propagate the actual orbit. Don't assume
+          v<sub>∞</sub> — use vis-viva at the actual position. Don't guess the
+          right parameters — sweep the space and let the math tell you.
+        </p>
+        <p>
+          <a href="/">← Back to the main page</a>
+        </p>
+      </div>
+    </article>
+    <script type="module">
+      import './src/styles/tufte.css'
+    </script>
+  </body>
+</html>
