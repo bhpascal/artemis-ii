@@ -212,7 +212,7 @@ export function TransferOrbitSection() {
         <ScrubableNumber
           initial={0}
           min={0}
-          max={4000}
+          max={3500}
           step={10}
           sensitivity={3}
           precision={0}
@@ -226,7 +226,7 @@ export function TransferOrbitSection() {
         type="range"
         className="scrub-slider"
         min={0}
-        max={4000}
+        max={3500}
         step={10}
         value={deltaV}
         onChange={(e) => setDeltaV(Number(e.target.value))}

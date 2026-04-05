@@ -33,7 +33,7 @@ export function HookSection() {
   // Pre-compute the smooth spatial trajectory (for the background path)
   const freeReturn = useMemo(() => {
     const vCirc = circularVelocity(MU_EARTH, R_LEO)
-    return computeFreeReturn(vCirc + 3133, FLYBY_ALTITUDE)
+    return computeFreeReturn(vCirc + 3170, FLYBY_ALTITUDE)
   }, [])
 
   // Pre-compute the time-sampled trajectory (for spacecraft position)

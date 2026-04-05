@@ -109,7 +109,7 @@ export function computeArtemisTrajectory(
 
   // Use the patched-conic solver to get the free-return trajectory
   const vCircLEO = circularVelocity(MU_EARTH, R_LEO)
-  const injectionDv = 3133 // m/s from LEO — nominal Hohmann-like transfer
+  const injectionDv = 3170 // m/s from LEO — tuned for valid free-return
   const injectionV = vCircLEO + injectionDv
 
   const freeReturn = computeFreeReturn(injectionV, FLYBY_ALTITUDE)

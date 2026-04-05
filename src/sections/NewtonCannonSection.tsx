@@ -228,7 +228,7 @@ export function NewtonCannonSection() {
         Cannonball velocity:{' '}
         <ScrubableNumber
           initial={7784}
-          min={5000}
+          min={6000}
           max={12000}
           step={50}
           sensitivity={5}

@@ -38,7 +38,7 @@ export function RealMissionSection() {
   // Smooth spatial path for the background (same as Hook)
   const freeReturn = useMemo(() => {
     const vCirc = circularVelocity(MU_EARTH, R_LEO)
-    return computeFreeReturn(vCirc + 3133, FLYBY_ALTITUDE)
+    return computeFreeReturn(vCirc + 3170, FLYBY_ALTITUDE)
   }, [])
 
   const met = missionHours * 3600 // seconds
