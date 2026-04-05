@@ -8,6 +8,8 @@ A Bret Victor-style "explorable explanation" of the orbital mechanics behind NAS
 
 **Full project spec**: `docs/project-spec.md` — contains all research data, physics requirements, section designs, and architecture decisions. Read it before starting work.
 
+**Flyby rewrite spec**: `docs/flyby-rewrite-spec.md` — detailed diagnosis and fix plan for the Free Return section's flyby computation. The solver is separated into `trajectory-solver.ts` (pure physics) and `trajectory-renderer.ts` (point generation). The flyby computation has three critical bugs in how it computes the exit state from the hyperbolic orbit. Read this before modifying any physics code in the Free Return pipeline.
+
 ## Tech Stack
 
 - **React + TypeScript** — component-based, type-safe
