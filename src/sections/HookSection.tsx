@@ -8,9 +8,14 @@ import {
   SPLASHDOWN_EPOCH,
   R_EARTH,
   R_MOON,
+  R_LEO,
+  MU_EARTH,
   D_MOON,
+  FLYBY_ALTITUDE,
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
+import { circularVelocity } from '../physics/orbits'
+import { computeFreeReturn } from '../physics/patched-conics'
 import {
   computeArtemisTrajectory,
   interpolateTrajectory,
@@ -18,14 +23,20 @@ import {
   formatCalendarDate,
 } from '../physics/trajectory'
 import { ViewTransform, drawLabel } from '../rendering/canvas-utils'
-import { drawEarth, drawMoon } from '../rendering/body-renderer'
+import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath, drawSpacecraft } from '../rendering/orbit-renderer'
 
 export function HookSection() {
   const { level } = useLevel()
   const [now, setNow] = useState(Date.now())
 
-  // Pre-compute trajectory once
+  // Pre-compute the smooth spatial trajectory (for the background path)
+  const freeReturn = useMemo(() => {
+    const vCirc = circularVelocity(MU_EARTH, R_LEO)
+    return computeFreeReturn(vCirc + 3133, FLYBY_ALTITUDE)
+  }, [])
+
+  // Pre-compute the time-sampled trajectory (for spacecraft position)
   const trajectory = useMemo(() => computeArtemisTrajectory(), [])
 
   // Real-time tick
@@ -34,10 +45,9 @@ export function HookSection() {
     return () => clearInterval(interval)
   }, [])
 
-  const met = Math.max(0, (now - LAUNCH_EPOCH) / 1000) // mission elapsed time in seconds
+  const met = Math.max(0, (now - LAUNCH_EPOCH) / 1000)
   const missionOver = now > SPLASHDOWN_EPOCH
   const totalMissionTime = MISSION_DURATION_DAYS * 86400
-
   const currentPoint = interpolateTrajectory(trajectory, Math.min(met, totalMissionTime))
 
   const render = useCallback(
@@ -49,32 +59,41 @@ export function HookSection() {
       transform.viewRadius = D_MOON * 1.3
       transform.centerX = D_MOON * 0.3
 
-      // Draw the full trajectory as a faded path
-      const allPts = trajectory.map((p) => ({ x: p.x, y: p.y }))
-      drawOrbitPath(ctx, transform, allPts, 'rgba(100,100,100,0.25)', 1.5)
+      drawStars(ctx, width, height, dpr, 35, 17)
 
-      // Moon's orbital arc (faint)
+      // Moon's orbital arc (very faint)
       const moonArc: Array<{ x: number; y: number }> = []
       for (let i = 0; i <= 200; i++) {
         const angle = (i / 200) * 2 * Math.PI
         moonArc.push({ x: D_MOON * Math.cos(angle), y: D_MOON * Math.sin(angle) })
       }
-      drawOrbitPath(ctx, transform, moonArc, 'rgba(200,200,200,0.2)', 1, [4 * dpr, 4 * dpr])
+      drawOrbitPath(ctx, transform, moonArc, 'rgba(200,200,200,0.15)', 1, [4 * dpr, 4 * dpr])
 
-      // Draw the traversed portion more boldly
+      // Draw the smooth free-return trajectory as a faded background path
+      if (freeReturn) {
+        const allPts = [
+          ...freeReturn.departurePts,
+          ...freeReturn.flybyPts,
+          ...freeReturn.returnPts,
+        ]
+        drawOrbitPath(ctx, transform, allPts, 'rgba(100,100,100,0.2)', 1.5, [3 * dpr, 3 * dpr])
+      }
+
+      // Draw the traversed portion (from the time-sampled trajectory, post-TLI only)
       if (currentPoint) {
+        const tliTime = 25 * 3600 // approximate TLI time
         const traversed = trajectory
-          .filter((p) => p.t <= met)
+          .filter((p) => p.t >= tliTime && p.t <= met)
           .map((p) => ({ x: p.x, y: p.y }))
         if (traversed.length > 1) {
-          drawOrbitPath(ctx, transform, traversed, '#2E86C1', 2)
+          drawOrbitPath(ctx, transform, traversed, '#2E86C1', 2.5)
         }
       }
 
       // Earth
       drawEarth(ctx, transform, R_EARTH, 8)
 
-      // Moon at its current approximate position
+      // Moon at current approximate position
       const moonAngularVelocity = 2 * Math.PI / (27.322 * 86400)
       const moonAngle = met * moonAngularVelocity
       const moonX = D_MOON * Math.cos(moonAngle)
@@ -83,19 +102,17 @@ export function HookSection() {
 
       // Spacecraft position
       if (currentPoint && !missionOver) {
-        drawSpacecraft(ctx, transform, currentPoint.x, currentPoint.y, '#E74C3C', 5)
+        drawSpacecraft(ctx, transform, currentPoint.x, currentPoint.y, '#E74C3C', 4)
 
-        // Label
         const [sx, sy] = transform.toScreen(currentPoint.x, currentPoint.y)
-        drawLabel(ctx, 'Orion', sx + 12 * dpr, sy - 8 * dpr, '#E74C3C', 12 * dpr)
+        drawLabel(ctx, 'Orion', sx + 10 * dpr, sy - 10 * dpr, '#E74C3C', 11 * dpr)
 
-        // Distance readout at Level 3+
         if (level >= 3 && currentPoint.distEarth > R_EARTH * 2) {
           drawLabel(
             ctx,
             `${(currentPoint.distEarth / 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} km from Earth`,
-            sx + 12 * dpr, sy + 8 * dpr,
-            '#888', 10 * dpr
+            sx + 10 * dpr, sy + 6 * dpr,
+            '#888', 9 * dpr
           )
         }
       }
@@ -105,7 +122,7 @@ export function HookSection() {
         drawLabel(ctx, 'Mission Complete', cx, cy, '#27AE60', 16 * dpr, 'center')
       }
     },
-    [trajectory, currentPoint, met, missionOver, level]
+    [freeReturn, trajectory, currentPoint, met, missionOver, level]
   )
 
   return (
@@ -154,11 +171,15 @@ export function HookSection() {
         </p>
       </LevelBlock>
 
-      <InteractiveFigure height={400} render={render} />
+      <InteractiveFigure
+        height={400}
+        render={render}
+        ariaLabel="Artemis II current position — spacecraft traveling from Earth toward the Moon on a free-return trajectory"
+      />
 
-      <p className="mission-clock" style={{
+      <p style={{
         textAlign: 'center',
-        fontSize: '1.2rem',
+        fontSize: '1.1rem',
         color: '#555',
         marginTop: '0.5rem',
         fontVariantNumeric: 'tabular-nums',

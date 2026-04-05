@@ -382,8 +382,22 @@ export function computeFreeReturn(
     }
   }
 
+  // Rotate everything into the co-rotating frame where the Moon sits at +x.
+  // This produces the classic figure-8 shape seen in NASA diagrams.
+  const cosM = Math.cos(-moonAngle)
+  const sinM = Math.sin(-moonAngle)
+  const rotate = (pts: Array<{ x: number; y: number }>) =>
+    pts.map(({ x: px, y: py }) => ({
+      x: px * cosM - py * sinM,
+      y: px * sinM + py * cosM,
+    }))
+
+  const rotDepPts = rotate(depPts)
+  const rotFlyPts = rotate(flyby.flybyPts)
+  const rotRetPts = rotate(retPts)
+
   // Max distance
-  const allPts = [...depPts, ...flyby.flybyPts, ...retPts]
+  const allPts = [...rotDepPts, ...rotFlyPts, ...rotRetPts]
   let maxDistance = 0
   for (const pt of allPts) {
     const d = Math.sqrt(pt.x * pt.x + pt.y * pt.y)
@@ -395,11 +409,11 @@ export function computeFreeReturn(
   const transitTime = soiResult.transitTime + returnTime
 
   return {
-    departurePts: depPts,
-    flybyPts: flyby.flybyPts,
-    returnPts: retPts,
-    moonPos: { x: moonX, y: moonY },
-    moonAngle,
+    departurePts: rotDepPts,
+    flybyPts: rotFlyPts,
+    returnPts: rotRetPts,
+    moonPos: { x: D_MOON, y: 0 }, // Moon at +x in the rotating frame
+    moonAngle: 0,
     flybyPeriapsis,
     turnAngle: flyby.turnAngle,
     flybyEccentricity: flyby.eHyp,
