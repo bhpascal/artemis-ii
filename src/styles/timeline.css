@@ -1,0 +1,96 @@
+/* ── Data panel ── */
+.data-panel {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.data-row:last-child {
+  border-bottom: none;
+}
+
+.data-label {
+  color: #777;
+}
+
+.data-value {
+  color: #111;
+  font-weight: normal;
+}
+
+/* ── Timeline bar ── */
+.timeline-bar {
+  position: relative;
+  height: 32px;
+  margin: 1.5rem 0 1rem;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #eee;
+}
+
+.timeline-phase {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+}
+
+.timeline-phase:hover {
+  opacity: 1;
+}
+
+.timeline-phase-label {
+  font-size: 0.6rem;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  padding: 0 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-marker {
+  position: absolute;
+  top: -2px;
+  width: 3px;
+  height: 36px;
+  background: #111;
+  border-radius: 1px;
+  transform: translateX(-1px);
+  z-index: 2;
+  transition: left 0.1s ease;
+}
+
+.timeline-event {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Mobile ── */
+@media (max-width: 760px) {
+  .timeline-phase-label {
+    font-size: 0.5rem;
+  }
+
+  .data-panel {
+    font-size: 1rem;
+  }
+}
