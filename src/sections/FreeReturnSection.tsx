@@ -24,8 +24,8 @@ import { drawOrbitPath } from '../rendering/orbit-renderer'
 const V_CIRC_LEO = circularVelocity(MU_EARTH, R_LEO)
 
 export function FreeReturnSection() {
-  const [flybyAlt, setFlybyAlt] = useState(11000)
-  const [injectionDv, setInjectionDv] = useState(3170)
+  const [flybyAlt, setFlybyAlt] = useState(10500)
+  const [injectionDv, setInjectionDv] = useState(3140)
   const [showInertial, setShowInertial] = useState(false)
   const { level } = useLevel()
 
@@ -305,9 +305,9 @@ export function FreeReturnSection() {
       <p>
         Flyby altitude:{' '}
         <ScrubableNumber
-          initial={6500}
+          initial={10500}
           min={5000}
-          max={15000}
+          max={20000}
           step={100}
           sensitivity={2}
           precision={0}
@@ -336,9 +336,9 @@ export function FreeReturnSection() {
             Injection Δv (from LEO):{' '}
           </LevelText>
           <ScrubableNumber
-            initial={3170}
-            min={3150}
-            max={3195}
+            initial={3140}
+            min={3130}
+            max={3200}
             step={1}
             sensitivity={3}
             precision={0}

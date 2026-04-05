@@ -62,12 +62,18 @@ export interface SolverResult {
   soiEntryNu: number         // true anomaly on departure orbit
   transitTime: number        // seconds from injection to SOI entry
 
-  // Flyby
-  vInfinity: number          // approach speed relative to Moon (m/s)
+  // Flyby — display values
+  vInfinity: number          // true v_infinity (from energy, not SOI speed) (m/s)
   flybyEccentricity: number  // hyperbolic eccentricity (>1)
-  turnAngle: number          // deflection angle (radians)
+  turnAngle: number          // asymptotic deflection angle (radians)
   turnSign: number           // +1 counterclockwise, -1 clockwise
-  flybyPeriapsis: number     // closest approach to Moon center (m)
+  flybyPeriapsis: number     // actual closest approach to Moon center (m)
+
+  // Flyby — orbit elements for renderer
+  flybyA: number             // hyperbolic semi-major axis (negative, m)
+  flybyOmega: number         // periapsis direction in Moon-centered frame (rad)
+  flybyEntryNu: number       // true anomaly at SOI entry
+  flybyExitNu: number        // true anomaly at SOI exit
 
   // SOI exit
   soiExit: StateVector       // Earth-centered inertial frame
@@ -157,65 +163,105 @@ function findSOIEntry(
 
 // ── Internal: Lunar flyby ──
 
+/**
+ * Correct flyby computation using exact orbit propagation.
+ *
+ * Instead of the approximate "rotate v_infinity by turn angle" approach,
+ * this computes the actual hyperbolic orbit from the state vector at
+ * SOI entry and propagates to the symmetric exit point.
+ *
+ * Fixes three bugs in the old implementation:
+ * 1. v_at_SOI != v_infinity (energy correction via vis-viva)
+ * 2. Asymptotic turn angle doesn't apply at finite SOI distance
+ * 3. Exit speed must equal entry speed (energy conservation), not v_infinity
+ */
 function computeFlyby(
   entryState: StateVector,
   moonPos: Vec2,
   moonVel: Vec2,
-  rPeriapsis: number
 ): {
-  turnAngle: number
+  aHyp: number
   eHyp: number
+  omegaHyp: number
+  nuEntry: number
+  nuExit: number
+  actualPeriapsis: number
+  turnAngle: number
   turnSign: number
   exitState: StateVector
 } | null {
-  // Relative state in Moon-centered frame
-  const relVx = entryState.vel.x - moonVel.x
-  const relVy = entryState.vel.y - moonVel.y
+  // 1. Moon-centered relative state
   const relX = entryState.pos.x - moonPos.x
   const relY = entryState.pos.y - moonPos.y
+  const relVx = entryState.vel.x - moonVel.x
+  const relVy = entryState.vel.y - moonVel.y
 
-  const vInf = Math.sqrt(relVx ** 2 + relVy ** 2)
-  if (vInf < 50) return null
+  const rSOI = Math.sqrt(relX ** 2 + relY ** 2)
+  const vSOI = Math.sqrt(relVx ** 2 + relVy ** 2)
 
-  // Hyperbolic elements
-  const aHyp = -MU_MOON / (vInf ** 2)
-  const eHyp = 1 - rPeriapsis / aHyp  // > 1 since aHyp < 0
+  if (vSOI < 50) return null
+
+  // 2. Hyperbolic orbit from vis-viva (uses actual speed at actual distance)
+  const aHyp = 1 / (2 / rSOI - vSOI ** 2 / MU_MOON) // negative for hyperbola
+  if (aHyp >= 0) return null
+
+  // Eccentricity vector — points from focus to periapsis
+  const rdotv = relX * relVx + relY * relVy
+  const evx = (1 / MU_MOON) * ((vSOI ** 2 - MU_MOON / rSOI) * relX - rdotv * relVx)
+  const evy = (1 / MU_MOON) * ((vSOI ** 2 - MU_MOON / rSOI) * relY - rdotv * relVy)
+  const eHyp = Math.sqrt(evx ** 2 + evy ** 2)
+
   if (eHyp <= 1) return null
 
-  const sinHalfDelta = 1 / eHyp
-  if (sinHalfDelta > 1) return null
-  const turnAngle = 2 * Math.asin(sinHalfDelta)
+  const omegaHyp = Math.atan2(evy, evx) // periapsis direction
 
-  // Turn direction from angular momentum of the approach
+  // Actual periapsis distance
+  const actualPeriapsis = Math.abs(aHyp) * (eHyp - 1)
+
+  // 3. True anomaly at SOI entry
+  const p = Math.abs(aHyp) * (eHyp ** 2 - 1)
+  let cosNu = (p / rSOI - 1) / eHyp
+  cosNu = Math.max(-1, Math.min(1, cosNu))
+  let nuEntry = Math.acos(cosNu)
+
+  // Approaching periapsis (rdotv < 0) means nu < 0
+  if (rdotv < 0) nuEntry = -nuEntry
+
+  // 4. Symmetric exit: opposite side of periapsis
+  const nuExit = -nuEntry
+
+  // 5. Exit state in perifocal frame via exact orbital mechanics
+  const exitPerifocal = orbitStateAtAnomaly(aHyp, eHyp, MU_MOON, nuExit)
+
+  // 6. Rotate perifocal → Moon-centered by omegaHyp
+  const cosO = Math.cos(omegaHyp)
+  const sinO = Math.sin(omegaHyp)
+  const exitRelPos: Vec2 = {
+    x: exitPerifocal.x * cosO - exitPerifocal.y * sinO,
+    y: exitPerifocal.x * sinO + exitPerifocal.y * cosO,
+  }
+  const exitRelVel: Vec2 = {
+    x: exitPerifocal.vx * cosO - exitPerifocal.vy * sinO,
+    y: exitPerifocal.vx * sinO + exitPerifocal.vy * cosO,
+  }
+
+  // 7. Back to Earth-centered frame
+  const exitState: StateVector = {
+    pos: { x: exitRelPos.x + moonPos.x, y: exitRelPos.y + moonPos.y },
+    vel: { x: exitRelVel.x + moonVel.x, y: exitRelVel.y + moonVel.y },
+  }
+
+  // Asymptotic turn angle and direction (for display)
+  const turnAngle = 2 * Math.asin(1 / eHyp)
   const L = relX * relVy - relY * relVx
   const turnSign = L > 0 ? +1 : -1
 
-  // Exit velocity: same magnitude, rotated by turn angle
-  const approachAngle = Math.atan2(relVy, relVx)
-  const exitAngle = approachAngle + turnSign * turnAngle
-
-  const exitVx = vInf * Math.cos(exitAngle) + moonVel.x
-  const exitVy = vInf * Math.sin(exitAngle) + moonVel.y
-
-  // Exit position on SOI boundary
-  const p = Math.abs(aHyp) * (eHyp ** 2 - 1)
-  let cosNuSOI = (p / SOI_MOON - 1) / eHyp
-  cosNuSOI = Math.max(-1, Math.min(1, cosNuSOI))
-  const nuSOI = Math.acos(cosNuSOI)
-
-  const entryAngle = Math.atan2(relY, relX)
-  const exitPosAngle = entryAngle + turnSign * 2 * nuSOI
-
-  const exitPos: Vec2 = {
-    x: moonPos.x + SOI_MOON * Math.cos(exitPosAngle),
-    y: moonPos.y + SOI_MOON * Math.sin(exitPosAngle),
-  }
-
   return {
-    turnAngle,
-    eHyp,
-    turnSign,
-    exitState: { pos: exitPos, vel: { x: exitVx, y: exitVy } },
+    aHyp, eHyp, omegaHyp,
+    nuEntry, nuExit,
+    actualPeriapsis,
+    turnAngle, turnSign,
+    exitState,
   }
 }
 
@@ -246,11 +292,69 @@ function computeReturnOrbit(exitState: StateVector): {
 
 // ── Public: Main solver ──
 
+/**
+ * Converge Moon angle and SOI entry for a given departure orbit and omega offset.
+ * Returns the converged state or null if SOI intersection is lost.
+ */
+function convergeMoonSOI(
+  a: number, e: number, omegaOffset: number
+): {
+  moonAngle: number
+  omega: number
+  soiNu: number
+  transitTime: number
+} | null {
+  const moonOmega = 2 * Math.PI / T_MOON
+
+  let moonAngle = 0
+  let omega = -Math.PI + omegaOffset
+
+  let soiFind = findSOIEntry(a, e, omega, D_MOON, 0)
+  if (!soiFind) return null
+
+  for (let iter = 0; iter < 8; iter++) {
+    moonAngle = soiFind.transitTime * moonOmega
+    omega = moonAngle - Math.PI + omegaOffset
+    const mx = D_MOON * Math.cos(moonAngle)
+    const my = D_MOON * Math.sin(moonAngle)
+    soiFind = findSOIEntry(a, e, omega, mx, my)
+    if (!soiFind) return null
+  }
+
+  return { moonAngle, omega, soiNu: soiFind.nu, transitTime: soiFind.transitTime }
+}
+
+/**
+ * Compute the flyby periapsis for a given omega offset.
+ * Used by the targeting bisection loop.
+ */
+function flybyPeriapsisForOffset(
+  a: number, e: number, omegaOffset: number
+): number | null {
+  const conv = convergeMoonSOI(a, e, omegaOffset)
+  if (!conv) return null
+
+  const moonPos: Vec2 = {
+    x: D_MOON * Math.cos(conv.moonAngle),
+    y: D_MOON * Math.sin(conv.moonAngle),
+  }
+  const moonVel: Vec2 = {
+    x: -V_MOON * Math.sin(conv.moonAngle),
+    y: V_MOON * Math.cos(conv.moonAngle),
+  }
+
+  const entryState = orbitState(a, e, conv.omega, MU_EARTH, conv.soiNu)
+  const flyby = computeFlyby(entryState, moonPos, moonVel)
+  if (!flyby) return null
+
+  return flyby.actualPeriapsis
+}
+
 export function solve(
   injectionV: number,
   flybyAltitude: number
 ): SolverResult {
-  const flybyPeriapsis = flybyAltitude + R_MOON
+  const targetPeriapsis = flybyAltitude + R_MOON
 
   // 1. Departure orbit
   const a = semiMajorAxis(MU_EARTH, R_LEO, injectionV)
@@ -261,24 +365,74 @@ export function solve(
   const apoR = apoapsis(a, e)
   if (apoR < D_MOON - SOI_MOON) return fail('Orbit does not reach the Moon')
 
-  // 2. Iterative Moon position + orbit orientation
-  const moonOmega = 2 * Math.PI / T_MOON
+  // 2. Targeting loop: scan for bracket, then bisect to hit desired flyby periapsis.
+  //    The relationship between omega_offset and periapsis is smooth but not monotonic
+  //    (peaks near 0°, drops on both sides). Scan at 1° intervals to find where the
+  //    target periapsis is bracketed, then bisect within that interval.
+  const DEG = Math.PI / 180
+  const SCAN_RANGE = 15 // degrees
+  const SCAN_STEP = 1   // degrees
 
-  let moonAngle = 0
-  let omega = -Math.PI  // apoapsis toward +x initially
-
-  let soiFind = findSOIEntry(a, e, omega, D_MOON, 0)
-  if (!soiFind) return fail('SOI intersection not found (initial)')
-
-  // Iterate: transit time → Moon position → re-orient orbit → re-find SOI
-  for (let iter = 0; iter < 8; iter++) {
-    moonAngle = soiFind.transitTime * moonOmega
-    omega = moonAngle - Math.PI
-    const mx = D_MOON * Math.cos(moonAngle)
-    const my = D_MOON * Math.sin(moonAngle)
-    soiFind = findSOIEntry(a, e, omega, mx, my)
-    if (!soiFind) return fail(`SOI intersection lost at iteration ${iter}`)
+  // Coarse scan
+  const samples: Array<{ offset: number; peri: number }> = []
+  for (let d = -SCAN_RANGE; d <= SCAN_RANGE; d += SCAN_STEP) {
+    const peri = flybyPeriapsisForOffset(a, e, d * DEG)
+    if (peri !== null && peri > 0) {
+      samples.push({ offset: d * DEG, peri })
+    }
   }
+
+  let omegaOffset = 0 // fallback: no offset
+
+  // Find adjacent pair that brackets the target, prefer closest to offset=0
+  let bestBracket: { lo: number; hi: number } | null = null
+  let bestDist = Infinity
+
+  for (let i = 0; i < samples.length - 1; i++) {
+    const s0 = samples[i]!
+    const s1 = samples[i + 1]!
+    if ((s0.peri <= targetPeriapsis && targetPeriapsis <= s1.peri) ||
+        (s1.peri <= targetPeriapsis && targetPeriapsis <= s0.peri)) {
+      const midOffset = (s0.offset + s1.offset) / 2
+      const dist = Math.abs(midOffset)
+      if (dist < bestDist) {
+        bestDist = dist
+        bestBracket = { lo: s0.offset, hi: s1.offset }
+      }
+    }
+  }
+
+  if (bestBracket) {
+    let lo = bestBracket.lo
+    let hi = bestBracket.hi
+    const periLo = flybyPeriapsisForOffset(a, e, lo)!
+    const increasing = periLo < targetPeriapsis
+
+    for (let iter = 0; iter < 30; iter++) {
+      const mid = (lo + hi) / 2
+      const periMid = flybyPeriapsisForOffset(a, e, mid)
+      if (periMid === null) { lo = mid; continue }
+
+      if (Math.abs(periMid - targetPeriapsis) < 1000) {
+        omegaOffset = mid
+        break
+      }
+
+      if (increasing ? (periMid < targetPeriapsis) : (periMid > targetPeriapsis)) {
+        lo = mid
+      } else {
+        hi = mid
+      }
+      omegaOffset = mid
+    }
+  }
+
+  // 3. Converge with final offset
+  const conv = convergeMoonSOI(a, e, omegaOffset)
+  if (!conv) return fail('SOI intersection not found')
+
+  const moonAngle = conv.moonAngle
+  const omega = conv.omega
 
   const moonPos: Vec2 = {
     x: D_MOON * Math.cos(moonAngle),
@@ -289,14 +443,20 @@ export function solve(
     y: V_MOON * Math.cos(moonAngle),
   }
 
-  // Get spacecraft state at SOI entry
-  const entryState = orbitState(a, e, omega, MU_EARTH, soiFind.nu)
+  const entryState = orbitState(a, e, omega, MU_EARTH, conv.soiNu)
 
-  // 3. Flyby
-  const flyby = computeFlyby(entryState, moonPos, moonVel, flybyPeriapsis)
+  // 4. Flyby
+  const flyby = computeFlyby(entryState, moonPos, moonVel)
   if (!flyby) return fail('Flyby computation failed')
 
-  // 4. Return orbit
+  // 5. True v_infinity from energy: v_inf = sqrt(v_SOI² - 2μ/r_SOI)
+  const relVx = entryState.vel.x - moonVel.x
+  const relVy = entryState.vel.y - moonVel.y
+  const vSOI = Math.sqrt(relVx ** 2 + relVy ** 2)
+  const vInfSq = vSOI ** 2 - 2 * MU_MOON / SOI_MOON
+  const vInfinity = vInfSq > 0 ? Math.sqrt(vInfSq) : 0
+
+  // 6. Return orbit
   const ret = computeReturnOrbit(flyby.exitState)
   const hitsEarth = ret.perigeeAlt > 0 && ret.perigeeAlt < 200e3
 
@@ -305,16 +465,17 @@ export function solve(
     departure: { a, e, omega },
     moonAngle,
     soiEntry: entryState,
-    soiEntryNu: soiFind.nu,
-    transitTime: soiFind.transitTime,
-    vInfinity: Math.sqrt(
-      (entryState.vel.x - moonVel.x) ** 2 +
-      (entryState.vel.y - moonVel.y) ** 2
-    ),
+    soiEntryNu: conv.soiNu,
+    transitTime: conv.transitTime,
+    vInfinity,
     flybyEccentricity: flyby.eHyp,
     turnAngle: flyby.turnAngle,
     turnSign: flyby.turnSign,
-    flybyPeriapsis,
+    flybyPeriapsis: flyby.actualPeriapsis,
+    flybyA: flyby.aHyp,
+    flybyOmega: flyby.omegaHyp,
+    flybyEntryNu: flyby.nuEntry,
+    flybyExitNu: flyby.nuExit,
     soiExit: flyby.exitState,
     returnOrbit: ret.orbit,
     returnPerigeeAlt: ret.perigeeAlt,
@@ -336,6 +497,10 @@ function fail(error: string): SolverResult {
     turnAngle: 0,
     turnSign: 0,
     flybyPeriapsis: 0,
+    flybyA: 0,
+    flybyOmega: 0,
+    flybyEntryNu: 0,
+    flybyExitNu: 0,
     soiExit: { pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 } },
     returnOrbit: { a: 0, e: 0, omega: 0 },
     returnPerigeeAlt: 0,

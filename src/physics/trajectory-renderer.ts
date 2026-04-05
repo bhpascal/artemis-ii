@@ -6,7 +6,7 @@
  * from the physics computation.
  */
 
-import { D_MOON, MU_MOON, SOI_MOON } from './constants'
+import { D_MOON } from './constants'
 import { radiusAtAnomaly } from './orbits'
 import type { SolverResult } from './trajectory-solver'
 
@@ -31,8 +31,8 @@ export function renderTrajectory(
 ): TrajectoryPoints | null {
   if (!result.success) return null
 
-  const { departure, moonAngle, soiEntryNu, soiEntry, soiExit, returnOrbit,
-    flybyEccentricity, turnSign } = result
+  const { departure, moonAngle, soiEntryNu, soiExit, returnOrbit,
+    flybyEccentricity, flybyA, flybyOmega, flybyEntryNu, flybyExitNu } = result
 
   // Rotation for co-rotating frame
   const frameAngle = frame === 'corotating' ? -moonAngle : 0
@@ -68,39 +68,36 @@ export function renderTrajectory(
   }
 
   // ── Flyby arc ──
-  // Use the hyperbolic orbit geometry in Moon-centered frame
+  // Use exact hyperbolic orbit elements from the solver
   const flybyPts: Array<{ x: number; y: number }> = []
 
-  const relX = soiEntry.pos.x - moonX
-  const relY = soiEntry.pos.y - moonY
-  const entryAngle = Math.atan2(relY, relX)
-
-  const vInf = result.vInfinity
-  const aHyp = -MU_MOON / (vInf ** 2)
   const eHyp = flybyEccentricity
+  const aHyp = flybyA
   const p = Math.abs(aHyp) * (eHyp ** 2 - 1)
 
-  let cosNuSOI = (p / SOI_MOON - 1) / eHyp
-  cosNuSOI = Math.max(-1, Math.min(1, cosNuSOI))
-  const nuSOI = Math.acos(cosNuSOI)
+  // Periapsis direction in Moon-centered frame (from eccentricity vector)
+  // Offset by moonAngle since flybyOmega is in Moon-centered inertial coords
+  const periapsisAngle = flybyOmega
 
-  // Periapsis direction: midway between entry and exit in the turn direction
-  const periapsisAngle = entryAngle + turnSign * nuSOI
+  // Sweep from entry to exit true anomaly (entry is negative, exit is positive)
+  const nuStart = flybyEntryNu
+  const nuEnd = flybyExitNu
 
   for (let i = 0; i <= nPoints; i++) {
     const t = i / nPoints
-    const nu = -nuSOI + t * 2 * nuSOI
+    const nu = nuStart + t * (nuEnd - nuStart)
     const r = p / (1 + eHyp * Math.cos(nu))
     if (!isFinite(r) || r < 0) continue
 
+    // Perifocal position
     const localX = r * Math.cos(nu)
     const localY = r * Math.sin(nu)
 
+    // Rotate by periapsis angle to Moon-centered frame, then offset to Earth frame
     const cosP = Math.cos(periapsisAngle)
     const sinP = Math.sin(periapsisAngle)
-    const fy = turnSign * localY
-    const ix = moonX + localX * cosP - fy * sinP
-    const iy = moonY + localX * sinP + fy * cosP
+    const ix = moonX + localX * cosP - localY * sinP
+    const iy = moonY + localX * sinP + localY * cosP
 
     flybyPts.push(rotate(ix, iy))
   }
