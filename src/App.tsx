@@ -4,6 +4,7 @@ import { LevelText, LevelBlock } from './components/LevelText'
 import { Sidenote } from './components/Sidenote'
 import { LevelContext, useLevelState } from './hooks/useLevel'
 import { NewtonCannonSection } from './sections/NewtonCannonSection'
+import { TransferOrbitSection } from './sections/TransferOrbitSection'
 import { TestOverlay } from './test/TestOverlay'
 
 export function App() {
@@ -78,6 +79,9 @@ export function App() {
 
         {/* Section 2: Newton's Cannon */}
         <NewtonCannonSection />
+
+        {/* Section 3: Transfer Orbits */}
+        <TransferOrbitSection />
 
         {/* Placeholder: remaining sections built in future phases */}
         <section className="section">
