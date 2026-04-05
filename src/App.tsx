@@ -3,6 +3,7 @@ import { LevelSwitcher } from './components/LevelSwitcher'
 import { LevelText, LevelBlock } from './components/LevelText'
 import { Sidenote } from './components/Sidenote'
 import { LevelContext, useLevelState } from './hooks/useLevel'
+import { FreeReturnSection } from './sections/FreeReturnSection'
 import { NewtonCannonSection } from './sections/NewtonCannonSection'
 import { TransferOrbitSection } from './sections/TransferOrbitSection'
 import { TestOverlay } from './test/TestOverlay'
@@ -83,62 +84,8 @@ export function App() {
         {/* Section 3: Transfer Orbits */}
         <TransferOrbitSection />
 
-        {/* Placeholder: remaining sections built in future phases */}
-        <section className="section">
-          <h2>The Free Return</h2>
-
-          <LevelBlock level={1}>
-            <p>
-              Here is the really cool part. After the rocket gives the
-              spaceship one big push, the Moon acts like a giant slingshot!
-              If the spaceship flies by at just the right distance, the
-              Moon's gravity grabs it, swings it around, and flings it
-              right back home. No engine needed!
-            </p>
-          </LevelBlock>
-
-          <LevelBlock min={2} max={4}>
-            <p>
-              Here is the beautiful part. After the trans-lunar injection
-              burn, the spacecraft follows a path that loops around the
-              Moon's far side and returns to Earth{' '}
-              <em>without any additional engine burn</em>. The Moon's gravity
-              does all the redirection. This is called a free-return
-              trajectory, and it is the ultimate safety feature.
-            </p>
-          </LevelBlock>
-
-          <LevelBlock level={5}>
-            <p>
-              The free-return trajectory is a restricted three-body orbit
-              that, within the patched-conic framework, decomposes into
-              an Earth-departure ellipse, a lunar hyperbolic flyby, and
-              an Earth-return ellipse. The critical constraint is that the
-              return perigee falls within the atmospheric entry corridor
-              (roughly 50–100 km altitude). The flyby altitude is the
-              single free parameter that satisfies this constraint, given
-              a fixed TLI state.
-            </p>
-          </LevelBlock>
-
-          <p>
-            <LevelText max={1}>
-              The distance the spaceship flies past the Moon is the magic
-              number. Too close, and it bends too much. Too far, and it
-              does not bend enough.
-            </LevelText>
-            <LevelText min={2}>
-              The flyby altitude is the critical parameter. Fly too close,
-              and the Moon bends your path too much — you miss Earth on the
-              return. Fly too far, and there is not enough bending.
-            </LevelText>
-            <Sidenote number={3}>
-              In April 1970, an oxygen tank exploded on Apollo 13, disabling
-              the main engine. The crew survived because they were on a
-              free-return trajectory. The Moon brought them home.
-            </Sidenote>
-          </p>
-        </section>
+        {/* Section 4: The Free Return */}
+        <FreeReturnSection />
       </Article>
     </LevelContext.Provider>
   )
