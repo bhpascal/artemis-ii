@@ -1,0 +1,301 @@
+/* ET Book font — Edward Tufte's typeface of choice */
+@font-face {
+  font-family: 'ET Book';
+  src: url('https://edwardtufte.github.io/tufte-css/et-book/et-book-roman-line-figures/et-book-roman-line-figures.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ET Book';
+  src: url('https://edwardtufte.github.io/tufte-css/et-book/et-book-bold-line-figures/et-book-bold-line-figures.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ET Book';
+  src: url('https://edwardtufte.github.io/tufte-css/et-book/et-book-display-italic-old-style-figures/et-book-display-italic-old-style-figures.woff') format('woff');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Root ── */
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'ET Book', Palatino, 'Palatino Linotype', 'Palatino LT STD',
+    'Book Antiqua', Georgia, serif;
+  background-color: #fffff8;
+  color: #111;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── Article layout ── */
+.article {
+  width: 87.5%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 5rem 0;
+  position: relative;
+}
+
+.article-body {
+  width: 55%;
+  min-width: 400px;
+}
+
+/* ── Headings — size and spacing, not bold (Tufte convention) ── */
+h1, h2, h3, h4 {
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1.15;
+}
+
+h1 {
+  font-size: 3.2rem;
+  margin-top: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+h2 {
+  font-size: 2.2rem;
+  margin-top: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+h3 {
+  font-size: 1.7rem;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  font-style: italic;
+}
+
+h4 {
+  font-size: 1.2rem;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Body text ── */
+p {
+  font-size: 1.4rem;
+  margin-bottom: 1.4rem;
+}
+
+/* ── Subtitle ── */
+.subtitle {
+  font-size: 1.8rem;
+  font-style: italic;
+  line-height: 1.4;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  display: block;
+}
+
+/* ── Links — understated ── */
+a {
+  color: #111;
+  text-decoration: underline;
+  text-decoration-color: #aaa;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-color: #111;
+}
+
+/* ── Blockquotes ── */
+blockquote {
+  font-size: 1.4rem;
+  font-style: italic;
+  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+  border-left: 2px solid #ccc;
+}
+
+blockquote footer {
+  font-size: 1.1rem;
+  font-style: normal;
+  margin-top: 0.5rem;
+}
+
+/* ── Sidenotes ── */
+.sidenote-container {
+  position: relative;
+}
+
+.sidenote {
+  float: right;
+  clear: right;
+  margin-right: -60%;
+  width: 50%;
+  font-size: 1.1rem;
+  line-height: 1.4;
+  vertical-align: baseline;
+  position: relative;
+}
+
+.sidenote-ref {
+  font-size: 0.75em;
+  user-select: none;
+  color: #a00;
+}
+
+.sidenote-number {
+  font-size: 0.75em;
+  user-select: none;
+}
+
+/* Sidenote toggle (mobile) */
+.sidenote-toggle {
+  display: none;
+}
+
+.sidenote-toggle-label {
+  display: none;
+  cursor: pointer;
+}
+
+/* ── Section dividers ── */
+.section {
+  padding-top: 2rem;
+  padding-bottom: 1rem;
+}
+
+.section + .section {
+  border-top: none;
+  margin-top: 2rem;
+}
+
+/* ── Figures — span into sidenote margin ── */
+.full-width-figure {
+  max-width: 100%;
+  width: 100%;
+  clear: both;
+}
+
+/* ── Emphasis ── */
+strong {
+  font-weight: bold;
+}
+
+em {
+  font-style: italic;
+}
+
+/* ── Small caps ── */
+.sc {
+  font-variant: small-caps;
+  font-size: 1.08em;
+  letter-spacing: 0.05em;
+}
+
+/* ── Epigraph ── */
+.epigraph {
+  margin: 3rem 0;
+}
+
+.epigraph blockquote {
+  font-style: italic;
+  border-left: none;
+  padding-left: 0;
+}
+
+.epigraph blockquote footer {
+  font-style: normal;
+  font-size: 1.1rem;
+}
+
+/* ── Mobile ── */
+@media (max-width: 760px) {
+  html {
+    font-size: 12px;
+  }
+
+  .article {
+    width: 90%;
+    padding: 2rem 0;
+  }
+
+  .article-body {
+    width: 100%;
+    min-width: 0;
+  }
+
+  p {
+    font-size: 1.4rem;
+  }
+
+  h1 {
+    font-size: 2.5rem;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+  }
+
+  h3 {
+    font-size: 1.4rem;
+  }
+
+  .sidenote-ref {
+    display: none;
+  }
+
+  /* Sidenotes collapse to inline toggles on mobile */
+  .sidenote {
+    display: none;
+    float: none;
+    margin: 0.5rem 0;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: #f5f5ed;
+    border-radius: 4px;
+    font-size: 1.2rem;
+  }
+
+  .sidenote-toggle-label {
+    display: inline;
+    font-size: 0.8em;
+    position: relative;
+    top: -0.4rem;
+    color: #a00;
+    cursor: pointer;
+  }
+
+  .sidenote-toggle:checked + .sidenote {
+    display: block;
+  }
+}
+
+/* ── Tablet breakpoint ── */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .article {
+    width: 90%;
+  }
+
+  .article-body {
+    width: 65%;
+  }
+
+  .sidenote {
+    margin-right: -45%;
+    width: 40%;
+  }
+}

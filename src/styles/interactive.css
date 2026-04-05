@@ -1,0 +1,109 @@
+/* ── Scrubable numbers ── */
+.scrubable {
+  color: #2E86C1;
+  border-bottom: 1.5px dotted #2E86C1;
+  cursor: col-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  padding: 0 1px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.scrubable:hover {
+  background-color: rgba(46, 134, 193, 0.08);
+  border-bottom-style: solid;
+}
+
+.scrubable.scrubbing {
+  background-color: rgba(46, 134, 193, 0.12);
+  border-bottom-style: solid;
+  color: #1a5276;
+}
+
+.scrubable-unit {
+  font-size: 0.85em;
+  margin-left: 0.15em;
+  color: #777;
+}
+
+/* ── Linked slider ── */
+.scrub-slider {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 0.75rem 0 1rem;
+  accent-color: #2E86C1;
+  cursor: pointer;
+}
+
+/* ── Level text transitions ── */
+.level-text {
+  transition: opacity 0.15s ease;
+}
+
+.level-text-visible {
+  opacity: 1;
+}
+
+.level-text-hidden {
+  display: none;
+}
+
+.level-block {
+  transition: opacity 0.15s ease;
+}
+
+.level-block-visible {
+  opacity: 1;
+}
+
+.level-block-hidden {
+  display: none;
+}
+
+/* ── Math block (displayed equations) ── */
+.math-block {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1.5rem 0;
+  font-size: 1.4rem;
+  font-family: 'ET Book', Palatino, Georgia, serif;
+  font-style: italic;
+  gap: 0.3em;
+  flex-wrap: wrap;
+}
+
+.math-block var {
+  font-style: italic;
+}
+
+/* ── Inline fraction ── */
+.math-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  line-height: 1;
+}
+
+.math-frac-num {
+  border-bottom: 1px solid #333;
+  padding: 0 0.25em 0.1em;
+  font-size: 0.85em;
+}
+
+.math-frac-den {
+  padding: 0.1em 0.25em 0;
+  font-size: 0.85em;
+}
+
+/* ── Math helpers ── */
+var {
+  font-style: italic;
+  font-family: 'ET Book', Palatino, Georgia, serif;
+}
