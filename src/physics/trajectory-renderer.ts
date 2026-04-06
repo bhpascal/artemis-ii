@@ -55,6 +55,9 @@ export function renderTrajectory(
       }
     } else {
       retPts.push(pt)
+      // Stop after the spacecraft returns near Earth (within ~20,000 km)
+      const earthDist = Math.sqrt(pt.x ** 2 + pt.y ** 2)
+      if (earthDist < 2e7 && retPts.length > 10) break
     }
   }
 

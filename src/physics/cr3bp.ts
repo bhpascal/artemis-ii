@@ -121,8 +121,8 @@ function rk4Step(s: State, dt: number): State {
  */
 export function propagate(
   injectionDv: number,
-  injectionAngle: number = 35,
-  nSteps: number = 80000,
+  injectionAngle: number = 36,
+  nSteps: number = 50000,
   maxTime: number = 4 * Math.PI
 ): TrajectoryResult {
   const mu = MU_CR3BP
@@ -159,7 +159,7 @@ export function propagate(
   let minMoonDist = Infinity
   let minEarthDist = Infinity
   let maxEarthDist = 0
-  const skipReturn = Math.floor(nSteps / 4) // skip outbound leg for return detection
+  const skipReturn = Math.floor(nSteps / 4)
 
   for (let i = 0; i <= nSteps; i++) {
     // Record point in SI units
@@ -170,24 +170,16 @@ export function propagate(
     const r2 = Math.sqrt((state.x - 1 + mu) ** 2 + state.y ** 2)
 
     // Track closest Moon approach
-    if (r2 < minMoonDist) {
-      minMoonDist = r2
-    }
+    if (r2 < minMoonDist) minMoonDist = r2
 
     // Track max Earth distance
-    if (r1 > maxEarthDist) {
-      maxEarthDist = r1
-    }
+    if (r1 > maxEarthDist) maxEarthDist = r1
 
     // Track closest Earth approach (after outbound leg)
-    if (i > skipReturn && r1 < minEarthDist) {
-      minEarthDist = r1
-    }
+    if (i > skipReturn && r1 < minEarthDist) minEarthDist = r1
 
     // Crash detection
-    if (r1 < R_EARTH_NORM) {
-      break
-    }
+    if (r1 < R_EARTH_NORM) break
     if (r2 < R_MOON_NORM) {
       return {
         points,
@@ -206,7 +198,7 @@ export function propagate(
 
   const flybyAltitude = minMoonDist * L_UNIT - R_MOON
   const returnPerigee = minEarthDist === Infinity ? -1 : minEarthDist * L_UNIT - R_EARTH
-  const hitsEarth = returnPerigee > 0 && returnPerigee < 200e3
+  const hitsEarth = returnPerigee > 0 && returnPerigee < 250e3
 
   return {
     points,
