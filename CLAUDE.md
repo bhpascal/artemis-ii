@@ -8,7 +8,33 @@ A Bret Victor-style "explorable explanation" of the orbital mechanics behind NAS
 
 **Full project spec**: `docs/project-spec.md` — contains all research data, physics requirements, section designs, and architecture decisions. Read it before starting work.
 
-**Flyby rewrite spec**: `docs/flyby-rewrite-spec.md` — detailed diagnosis and fix plan for the Free Return section's flyby computation. The solver is separated into `trajectory-solver.ts` (pure physics) and `trajectory-renderer.ts` (point generation). The flyby computation has three critical bugs in how it computes the exit state from the hyperbolic orbit. Read this before modifying any physics code in the Free Return pipeline.
+**Live data sources**: `docs/live-data-sources.md` — API endpoints for real telemetry (community orbit API, AROW, JPL Horizons, mission timeline). Already integrated into Hook section.
+
+**Claude Web visualization reference**: `docs/claude-web-viz` — comprehensive CR3BP analysis including the Arenstorf orbit approach (see "Current Status" below).
+
+**Flyby rewrite spec**: `docs/flyby-rewrite-spec.md` — HISTORICAL. The patched-conic solver was replaced by a CR3BP integrator (`src/physics/cr3bp.ts`). This spec documents the debugging journey but the code it describes no longer exists.
+
+## Current Status (as of 2026-04-05)
+
+**What's working:**
+- Sections 1-4 render with CR3BP trajectories (μ enhanced to 0.15 for 2D visualization)
+- Free Return section: slider scrubs Δv, trajectory loops around Moon, returns to Earth
+- Live telemetry in Hook section from `artemis.cdnspace.ca/api/orbit` (updates every 60s)
+- Countdown to lunar closest approach
+- Behind the Scenes page at `/behind-the-scenes`
+
+**What's next (Arenstorf orbit):**
+The interactive sections currently use CR3BP with μ=0.15 (Moon mass enhanced 12×) to compensate for 2D limitations. Claude Web's reference doc (`docs/claude-web-viz`) identifies a cleaner approach: the **Arenstorf orbit** — a known periodic solution to the CR3BP that produces a perfect closed figure-8:
+```
+x₀ = 0.994, y₀ = 0, ẋ₀ = 0, ẏ₀ = −2.00158510637908252240537862224
+μ = 0.012277471, T = 17.0652 (period, normalized)
+```
+This starts near the Moon (not from LEO) but produces an exact, beautiful figure-8 at the REAL μ value — no mass enhancement needed. Could be used as the demo/default trajectory, with the LEO injection kept for the "what-if" slider exploration. This would let us drop the μ hack entirely.
+
+**Other TODO:**
+- Inertial frame toggle (commented out — needs CR3BP→inertial coordinate rotation, see `docs/claude-web-viz` for the transform formulas)
+- Section 5 trajectory: replace CR3BP simulation with real OEM telemetry when available
+- Behind the Scenes page: add the μ enhancement story to the narrative
 
 ## Tech Stack
 
