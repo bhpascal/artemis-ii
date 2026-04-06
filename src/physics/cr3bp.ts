@@ -122,7 +122,7 @@ function rk4Step(s: State, dt: number): State {
 export function propagate(
   injectionDv: number,
   injectionAngle: number = 2.75,
-  nSteps: number = 75000,
+  nSteps: number = 60000,
   maxTime: number = 4 * Math.PI
 ): TrajectoryResult {
   const mu = MU_CR3BP
@@ -161,18 +161,24 @@ export function propagate(
   let maxEarthDist = 0
   const skipReturn = Math.floor(nSteps / 4)
 
-  // Downsample output: integrate at 50K steps for accuracy,
+  // Downsample output: integrate at full resolution for accuracy,
   // but only record ~1000 points for rendering
   const sampleEvery = Math.max(1, Math.floor(nSteps / 1000))
 
+  // Skip initial LEO parking orbits — only start recording once the
+  // spacecraft is heading outward (r > 3× LEO radius from Earth)
+  const departureThreshold = 3 * rLeo
+  let departed = false
+
   for (let i = 0; i <= nSteps; i++) {
-    // Record point at reduced rate (keeps output manageable for Canvas)
-    if (i % sampleEvery === 0) {
+    const r1 = Math.sqrt((state.x + mu) ** 2 + state.y ** 2)
+    if (r1 > departureThreshold) departed = true
+
+    // Record point at reduced rate, skipping initial LEO orbits
+    if (departed && i % sampleEvery === 0) {
       points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT, t: i * dt * T_UNIT })
     }
 
-    // Distances (normalized)
-    const r1 = Math.sqrt((state.x + mu) ** 2 + state.y ** 2)
     const r2 = Math.sqrt((state.x - 1 + mu) ** 2 + state.y ** 2)
 
     // Track closest Moon approach
