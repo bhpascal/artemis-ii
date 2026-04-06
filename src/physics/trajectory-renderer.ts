@@ -6,7 +6,7 @@
  * based on proximity to the Moon.
  */
 
-import { D_MOON, SOI_MOON } from './constants'
+import { D_MOON } from './constants'
 import type { TrajectoryResult } from './cr3bp'
 
 export interface TrajectoryPoints {
@@ -31,7 +31,11 @@ export function renderTrajectory(
   const moonX = D_MOON
   const moonY = 0
 
-  // Split points into segments by proximity to Moon's SOI
+  // Split points into segments: departure → flyby → return.
+  // Use 30% of Earth-Moon distance as the flyby proximity threshold
+  // (larger than the formal SOI because the CR3BP doesn't have SOI boundaries).
+  const flybyThreshold = D_MOON * 0.3
+
   const depPts: Array<{ x: number; y: number }> = []
   const flyPts: Array<{ x: number; y: number }> = []
   const retPts: Array<{ x: number; y: number }> = []
@@ -43,15 +47,15 @@ export function renderTrajectory(
 
     if (phase === 'departure') {
       depPts.push(pt)
-      if (moonDist < SOI_MOON) {
+      if (moonDist < flybyThreshold) {
         phase = 'flyby'
-        flyPts.push(pt) // overlap point for continuity
+        flyPts.push(pt)
       }
     } else if (phase === 'flyby') {
       flyPts.push(pt)
-      if (moonDist > SOI_MOON) {
+      if (moonDist > flybyThreshold) {
         phase = 'return'
-        retPts.push(pt) // overlap point for continuity
+        retPts.push(pt)
       }
     } else {
       retPts.push(pt)

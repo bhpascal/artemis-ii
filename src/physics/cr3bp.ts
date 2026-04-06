@@ -161,9 +161,15 @@ export function propagate(
   let maxEarthDist = 0
   const skipReturn = Math.floor(nSteps / 4)
 
+  // Downsample output: integrate at 50K steps for accuracy,
+  // but only record ~1000 points for rendering
+  const sampleEvery = Math.max(1, Math.floor(nSteps / 1000))
+
   for (let i = 0; i <= nSteps; i++) {
-    // Record point in SI units
-    points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT })
+    // Record point at reduced rate (keeps output manageable for Canvas)
+    if (i % sampleEvery === 0) {
+      points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT })
+    }
 
     // Distances (normalized)
     const r1 = Math.sqrt((state.x + mu) ** 2 + state.y ** 2)
