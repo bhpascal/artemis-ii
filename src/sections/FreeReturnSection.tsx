@@ -301,8 +301,8 @@ export function FreeReturnSection() {
         Injection Δv:{' '}
         <ScrubableNumber
           initial={3060}
-          min={2950}
-          max={3150}
+          min={3040}
+          max={3080}
           step={1}
           sensitivity={3}
           precision={0}
@@ -315,8 +315,8 @@ export function FreeReturnSection() {
       <input
         type="range"
         className="scrub-slider"
-        min={2950}
-        max={3150}
+        min={3040}
+        max={3080}
         step={1}
         value={injectionDv}
         onChange={(e) => setInjectionDv(Number(e.target.value))}
