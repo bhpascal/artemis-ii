@@ -121,15 +121,15 @@ function rk4Step(s: State, dt: number): State {
  */
 export function propagate(
   injectionDv: number,
-  injectionAngle: number = 2.75,
-  nSteps: number = 60000,
-  maxTime: number = 4 * Math.PI
+  injectionAngle: number = 36,
+  nSteps: number = 15000,
+  maxTime: number = 2.0  // ~8.7 days — covers outbound + flyby + return
 ): TrajectoryResult {
   const mu = MU_CR3BP
 
   // Injection from LEO at a lead angle ahead of the anti-lunar point.
-  // angle=0° is the anti-lunar point; ~2.75° produces an Apollo-like
-  // 180° transfer that approaches the Moon from the correct geometry.
+  // angle=0° is the anti-lunar point; ~36° produces a direct transfer
+  // that reaches the Moon in ~3 days with visible gravitational deflection.
   const rLeo = R_LEO / L_UNIT
   const theta = (injectionAngle * Math.PI) / 180
   const x0 = -mu + rLeo * Math.cos(Math.PI + theta)

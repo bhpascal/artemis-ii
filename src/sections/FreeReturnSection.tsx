@@ -19,7 +19,7 @@ import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath } from '../rendering/orbit-renderer'
 
 export function FreeReturnSection() {
-  const [injectionDv, setInjectionDv] = useState(3150)
+  const [injectionDv, setInjectionDv] = useState(3133)
   const [showInertial, setShowInertial] = useState(false)
   const { level } = useLevel()
 
@@ -300,9 +300,9 @@ export function FreeReturnSection() {
       <p>
         Injection Δv:{' '}
         <ScrubableNumber
-          initial={3150}
-          min={3140}
-          max={3165}
+          initial={3133}
+          min={3100}
+          max={3200}
           step={1}
           sensitivity={3}
           precision={0}
@@ -315,8 +315,8 @@ export function FreeReturnSection() {
       <input
         type="range"
         className="scrub-slider"
-        min={3140}
-        max={3165}
+        min={3100}
+        max={3200}
         step={1}
         value={injectionDv}
         onChange={(e) => setInjectionDv(Number(e.target.value))}
