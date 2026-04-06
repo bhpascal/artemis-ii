@@ -1,9 +1,9 @@
 /**
  * Trajectory solver — thin adapter over the CR3BP integrator.
  *
- * Uses a fixed injection angle of 36° from the anti-lunar point.
+ * Uses the default injection angle (2.75° from anti-lunar point).
  * The slider range is tuned to the window where trajectories
- * encounter the Moon (Δv ≈ 3130–3155 m/s from LEO).
+ * encounter the Moon (Δv ≈ 3140–3165 m/s from LEO).
  */
 
 import { propagate, type TrajectoryResult } from './cr3bp'
@@ -21,7 +21,7 @@ export interface SolverResult extends TrajectoryResult {
 
 export function solve(injectionDv: number): SolverResult {
   const dv = injectionDv > 5000 ? injectionDv - 7789 : injectionDv
-  const result = propagate(dv, 36)
+  const result = propagate(dv)
 
   return {
     ...result,

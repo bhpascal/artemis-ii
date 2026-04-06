@@ -29,7 +29,7 @@ export function HookSection() {
 
   // Pre-compute the smooth spatial trajectory (for the background path)
   const freeReturn = useMemo(() => {
-    const result = solve(3143)
+    const result = solve(3150)
     return result.success ? renderTrajectory(result) : null
   }, [])
 

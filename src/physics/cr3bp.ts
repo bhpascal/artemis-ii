@@ -121,8 +121,8 @@ function rk4Step(s: State, dt: number): State {
  */
 export function propagate(
   injectionDv: number,
-  injectionAngle: number = 36,
-  nSteps: number = 50000,
+  injectionAngle: number = 2.75,
+  nSteps: number = 75000,
   maxTime: number = 4 * Math.PI
 ): TrajectoryResult {
   const mu = MU_CR3BP

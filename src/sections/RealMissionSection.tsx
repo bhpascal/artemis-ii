@@ -34,7 +34,7 @@ export function RealMissionSection() {
 
   // Smooth spatial path for the background (same as Hook)
   const freeReturn = useMemo(() => {
-    const result = solve(3143)
+    const result = solve(3150)
     return result.success ? renderTrajectory(result) : null
   }, [])
 
