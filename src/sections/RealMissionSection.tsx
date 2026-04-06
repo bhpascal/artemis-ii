@@ -6,13 +6,9 @@ import { useLevel } from '../hooks/useLevel'
 import {
   R_EARTH,
   R_MOON,
-  R_LEO,
-  MU_EARTH,
   D_MOON,
-  FLYBY_ALTITUDE,
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
-import { circularVelocity } from '../physics/orbits'
 import { solve } from '../physics/trajectory-solver'
 import { renderTrajectory } from '../physics/trajectory-renderer'
 import {
@@ -38,8 +34,7 @@ export function RealMissionSection() {
 
   // Smooth spatial path for the background (same as Hook)
   const freeReturn = useMemo(() => {
-    const vCirc = circularVelocity(MU_EARTH, R_LEO)
-    const result = solve(vCirc + 3170, FLYBY_ALTITUDE)
+    const result = solve(3143)
     return result.success ? renderTrajectory(result) : null
   }, [])
 

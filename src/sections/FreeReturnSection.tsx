@@ -9,34 +9,29 @@ import { useLevel } from '../hooks/useLevel'
 import {
   R_EARTH,
   R_MOON,
-  MU_EARTH,
   D_MOON,
   SOI_MOON,
-  R_LEO,
 } from '../physics/constants'
-import { circularVelocity } from '../physics/orbits'
 import { solve } from '../physics/trajectory-solver'
 import { renderTrajectory } from '../physics/trajectory-renderer'
 import { ViewTransform, drawLabel, drawLine } from '../rendering/canvas-utils'
 import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath } from '../rendering/orbit-renderer'
 
-const V_CIRC_LEO = circularVelocity(MU_EARTH, R_LEO)
-
 export function FreeReturnSection() {
-  const [flybyAlt, setFlybyAlt] = useState(10500)
-  const [injectionDv, setInjectionDv] = useState(3140)
+  const [injectionDv, setInjectionDv] = useState(3143)
   const [showInertial, setShowInertial] = useState(false)
   const { level } = useLevel()
 
-  const injectionV = V_CIRC_LEO + injectionDv
-  const flybyAltMeters = flybyAlt * 1000
-
-  // Compute the trajectory (memoized — only recomputes when params change)
+  // Compute the trajectory (memoized — only recomputes when dv changes)
   const solverResult = useMemo(
-    () => solve(injectionV, flybyAltMeters),
-    [injectionV, flybyAltMeters]
+    () => solve(injectionDv),
+    [injectionDv]
   )
+
+  const flybyAlt = solverResult.flybyAltitude >= 0
+    ? Math.round(solverResult.flybyAltitude / 1000)
+    : 0
 
   const trajectory = useMemo(
     () => solverResult.success
@@ -303,49 +298,33 @@ export function FreeReturnSection() {
       </LevelBlock>
 
       <p>
-        Flyby altitude:{' '}
+        Injection Δv:{' '}
         <ScrubableNumber
-          initial={10500}
-          min={5000}
-          max={20000}
-          step={100}
-          sensitivity={2}
+          initial={3143}
+          min={3100}
+          max={3200}
+          step={1}
+          sensitivity={3}
           precision={0}
-          unit=" km"
-          value={flybyAlt}
-          onChange={setFlybyAlt}
+          unit=" m/s"
+          value={injectionDv}
+          onChange={setInjectionDv}
         />
       </p>
 
       <input
         type="range"
         className="scrub-slider"
-        min={100}
-        max={20000}
-        step={100}
-        value={flybyAlt}
-        onChange={(e) => setFlybyAlt(Number(e.target.value))}
+        min={3100}
+        max={3200}
+        step={1}
+        value={injectionDv}
+        onChange={(e) => setInjectionDv(Number(e.target.value))}
       />
 
-      <LevelBlock min={4}>
-        <p>
-          <LevelText level={4}>
-            Fine-tune the injection delta-v:{' '}
-          </LevelText>
-          <LevelText level={5}>
-            Injection Δv (from LEO):{' '}
-          </LevelText>
-          <ScrubableNumber
-            initial={3140}
-            min={3130}
-            max={3200}
-            step={1}
-            sensitivity={3}
-            precision={0}
-            unit=" m/s"
-            value={injectionDv}
-            onChange={setInjectionDv}
-          />
+      <LevelBlock min={3}>
+        <p style={{ fontSize: '1.2rem', color: '#666' }}>
+          Flyby altitude: {flybyAlt > 0 ? flybyAlt.toLocaleString() : '—'} km
         </p>
       </LevelBlock>
 
