@@ -29,13 +29,38 @@ Three sources of real telemetry and ephemeris data identified 2026-04-05 (missio
 
 **Query params:** TBD — need to construct the right batch query for Moon state vectors over the mission window (April 1–10, 2026).
 
-## 3. AROW Community API
+## 3. Community APIs (via artemis.cdnspace.ca)
 
-**What:** REST API referenced by community tracker at artemis-tracker.netlify.app.
+Built by Canadian Space community. No auth required. Full source reference at artemis-tracker.netlify.app/sources.
 
-**Status:** Needs investigation — may provide a simpler endpoint for current/recent spacecraft state without downloading full OEM files.
+**Orbit API** — `artemis.cdnspace.ca/api/orbit`
+- Format: JSON, updated every 5 minutes
+- Provides: Speed, altitude, distance from Earth, distance from Moon, range rate, solar phase angle, G-force estimates
+- Use case: Hook section (current position), Section 5 (mission replay)
 
-**Use case:** Hook section (live current position) if the API supports real-time queries.
+**AROW Telemetry** — `artemis.cdnspace.ca/api/arow/stream` (SSE) or `/api/arow` (polling)
+- Format: Server-Sent Events (~1s) or JSON polling (5s fallback)
+- Provides: Spacecraft orientation, angular rates, solar array positions, antenna angles, spacecraft mode
+- Use case: Live telemetry display, attitude visualization
+
+**DSN Tracking** — `artemis.cdnspace.ca/api/dsn`
+- Format: JSON, updated every 10 seconds
+- Provides: Active DSN dishes tracking Orion, station names, signal details, round-trip light time
+- Use case: "Who's listening?" display (stretch goal)
+
+**NASA DSN Direct** — `eyes.nasa.gov/dsn/data/dsn.xml`
+- Format: XML, updated every 60 seconds
+- Provides: All tracked spacecraft, dish specs, frequency/power, signal strength
+
+**Mission Timeline** — `github.com/jakobrosin/artemis-data`
+- Format: JSON (loaded once at page load)
+- Provides: Event timestamps, crew schedules, mission phases
+- Use case: Section 5 mission scrubber timeline events
+
+**Space Weather** — `ccmc.gsfc.nasa.gov/donki/` (via proxy)
+- Format: JSON, updated every 15 minutes
+- Provides: Solar flares, geomagnetic storms, CMEs, solar energetic particles
+- Use case: Context for radiation exposure discussion (Level 4+)
 
 ---
 
