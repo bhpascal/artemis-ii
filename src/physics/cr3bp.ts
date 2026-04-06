@@ -45,7 +45,7 @@ interface State {
 }
 
 export interface TrajectoryResult {
-  points: Array<{ x: number; y: number }>
+  points: Array<{ x: number; y: number; t: number }>  // t = physical seconds since injection
   flybyAltitude: number   // closest Moon surface approach (m)
   returnPerigee: number   // closest Earth surface approach after outbound (m)
   hitsEarth: boolean      // returnPerigee in 0–200 km
@@ -155,7 +155,7 @@ export function propagate(
   let state: State = { x: x0, y: y0, vx: vx0, vy: vy0 }
   const dt = maxTime / nSteps
 
-  const points: Array<{ x: number; y: number }> = []
+  const points: Array<{ x: number; y: number; t: number }> = []
   let minMoonDist = Infinity
   let minEarthDist = Infinity
   let maxEarthDist = 0
@@ -168,7 +168,7 @@ export function propagate(
   for (let i = 0; i <= nSteps; i++) {
     // Record point at reduced rate (keeps output manageable for Canvas)
     if (i % sampleEvery === 0) {
-      points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT })
+      points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT, t: i * dt * T_UNIT })
     }
 
     // Distances (normalized)

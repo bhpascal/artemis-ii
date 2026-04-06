@@ -10,9 +10,9 @@ import { D_MOON } from './constants'
 import type { TrajectoryResult } from './cr3bp'
 
 export interface TrajectoryPoints {
-  departurePts: Array<{ x: number; y: number }>
-  flybyPts: Array<{ x: number; y: number }>
-  returnPts: Array<{ x: number; y: number }>
+  departurePts: Array<{ x: number; y: number; t: number }>
+  flybyPts: Array<{ x: number; y: number; t: number }>
+  returnPts: Array<{ x: number; y: number; t: number }>
   moonPos: { x: number; y: number }
 }
 
@@ -36,9 +36,9 @@ export function renderTrajectory(
   // (larger than the formal SOI because the CR3BP doesn't have SOI boundaries).
   const flybyThreshold = D_MOON * 0.3
 
-  const depPts: Array<{ x: number; y: number }> = []
-  const flyPts: Array<{ x: number; y: number }> = []
-  const retPts: Array<{ x: number; y: number }> = []
+  const depPts: Array<{ x: number; y: number; t: number }> = []
+  const flyPts: Array<{ x: number; y: number; t: number }> = []
+  const retPts: Array<{ x: number; y: number; t: number }> = []
 
   let phase: 'departure' | 'flyby' | 'return' = 'departure'
 
