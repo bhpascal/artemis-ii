@@ -330,55 +330,7 @@ export function FreeReturnSection() {
 
       <InteractiveFigure height={550} render={renderMain} />
 
-      <div style={{ textAlign: 'center', margin: '0.75rem 0' }}>
-        <button
-          onClick={() => setShowInertial(!showInertial)}
-          style={{
-            background: 'none',
-            border: '1px solid #ccc',
-            borderRadius: '4px',
-            padding: '0.4rem 1rem',
-            fontFamily: 'inherit',
-            fontSize: '0.9rem',
-            color: '#555',
-            cursor: 'pointer',
-          }}
-        >
-          {showInertial ? 'Show co-rotating frame (figure-8)' : 'Show inertial frame (teardrop)'}
-        </button>
-      </div>
-
-      <LevelBlock min={2}>
-        {showInertial ? (
-          <p style={{ fontSize: '1.1rem', color: '#777', textAlign: 'center', fontStyle: 'italic' }}>
-            <LevelText level={2}>
-              This is what the path looks like from far away in space.
-              The Moon is moving, so the path is not a figure-8 — it is
-              more like a loop.
-            </LevelText>
-            <LevelText min={3}>
-              Inertial frame: the Moon moves ~{'\u200B'}40° during transit.
-              The same trajectory that looks like a figure-8 in the
-              co-rotating frame looks like a teardrop when the Moon's
-              orbital motion is included. Both are the same physics —
-              just different perspectives.
-            </LevelText>
-          </p>
-        ) : (
-          <p style={{ fontSize: '1.1rem', color: '#777', textAlign: 'center', fontStyle: 'italic' }}>
-            <LevelText level={2}>
-              This view follows the Earth-Moon system as it moves.
-              That is why the path looks like a figure-8.
-            </LevelText>
-            <LevelText min={3}>
-              Co-rotating frame: the Earth-Moon line stays horizontal.
-              NASA uses this view because it shows the mission geometry
-              clearly — the figure-8 emerges from the flyby redirecting
-              the spacecraft to the opposite side of the Earth-Moon line.
-            </LevelText>
-          </p>
-        )}
-      </LevelBlock>
+      {/* TODO: inertial frame toggle — needs CR3BP→inertial coordinate rotation */}
 
       <h3>Flyby Detail</h3>
       <InteractiveFigure height={350} render={renderInset} />
