@@ -128,8 +128,8 @@ export function propagate(
   const mu = MU_CR3BP
 
   // Injection from LEO at a lead angle ahead of the anti-lunar point.
-  // angle=0° is the anti-lunar point; angle=35° leads the Moon's position,
-  // producing the approach geometry needed for a far-side flyby.
+  // angle=0° is the anti-lunar point; ~2.75° produces an Apollo-like
+  // 180° transfer that approaches the Moon from the correct geometry.
   const rLeo = R_LEO / L_UNIT
   const theta = (injectionAngle * Math.PI) / 180
   const x0 = -mu + rLeo * Math.cos(Math.PI + theta)
@@ -174,9 +174,15 @@ export function propagate(
     const r1 = Math.sqrt((state.x + mu) ** 2 + state.y ** 2)
     if (r1 > departureThreshold) departed = true
 
-    // Record point at reduced rate, skipping initial LEO orbits
+    // Record point at reduced rate, skipping initial LEO orbits.
+    // Shift from barycentric (Earth at -μ) to Earth-centered (Earth at 0)
+    // so the output matches the canvas convention (Earth at origin, Moon at D_MOON).
     if (departed && i % sampleEvery === 0) {
-      points.push({ x: state.x * L_UNIT, y: state.y * L_UNIT, t: i * dt * T_UNIT })
+      points.push({
+        x: (state.x + mu) * L_UNIT,
+        y: state.y * L_UNIT,
+        t: i * dt * T_UNIT,
+      })
     }
 
     const r2 = Math.sqrt((state.x - 1 + mu) ** 2 + state.y ** 2)
@@ -191,7 +197,17 @@ export function propagate(
     if (i > skipReturn && r1 < minEarthDist) minEarthDist = r1
 
     // Crash detection
-    if (r1 < R_EARTH_NORM) break
+    if (r1 < R_EARTH_NORM) {
+      return {
+        points,
+        flybyAltitude: minMoonDist * L_UNIT - R_MOON,
+        returnPerigee: -1,
+        hitsEarth: false,
+        maxDistance: maxEarthDist * L_UNIT,
+        success: false,
+        error: 'Crashed into Earth',
+      }
+    }
     if (r2 < R_MOON_NORM) {
       return {
         points,
@@ -210,7 +226,7 @@ export function propagate(
 
   const flybyAltitude = minMoonDist * L_UNIT - R_MOON
   const returnPerigee = minEarthDist === Infinity ? -1 : minEarthDist * L_UNIT - R_EARTH
-  const hitsEarth = returnPerigee > 0 && returnPerigee < 250e3
+  const hitsEarth = returnPerigee > 0 && returnPerigee < 200e3
 
   return {
     points,

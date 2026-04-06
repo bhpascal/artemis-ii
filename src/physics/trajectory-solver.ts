@@ -20,8 +20,7 @@ export interface SolverResult extends TrajectoryResult {
 }
 
 export function solve(injectionDv: number): SolverResult {
-  const dv = injectionDv > 5000 ? injectionDv - 7789 : injectionDv
-  const result = propagate(dv)
+  const result = propagate(injectionDv)
 
   return {
     ...result,
