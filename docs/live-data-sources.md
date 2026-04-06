@@ -64,6 +64,10 @@ This gives Level 5 readers a concrete, visual answer to "when does this approxim
 ### Layer 3: Real telemetry (Section 5 + Hook)
 Replace `trajectory.ts` simulation with OEM data + Horizons Moon positions. The reader scrubs through the actual mission. Hook section shows live position.
 
+## Decision: Use AROW API for Mission Sections
+
+Sections 1 (Hook) and 5 (Real Mission) should pull directly from the AROW API / OEM files rather than computing trajectories. There's no reason to simulate what we can observe. The CR3BP stays for Sections 2-4 (interactive exploration) where the reader changes parameters.
+
 ## Technical Notes
 
 - **Frame conversion:** OEM is J2000 (inertial). Co-rotating frame visualization requires rotating each point by the Moon's angular position at that timestamp. JPL Horizons provides the Moon position needed for this rotation.

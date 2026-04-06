@@ -19,8 +19,17 @@ import { D_MOON, T_MOON, R_EARTH, R_MOON, R_LEO } from './constants'
 
 // ── Constants ──
 
-/** Moon mass parameter: M_Moon / (M_Earth + M_Moon) */
-export const MU_CR3BP = 0.012150585
+/**
+ * Moon mass parameter — enhanced for 2D visualization.
+ *
+ * The physical value is 0.0122. We use 0.15 (≈12× enhancement) so that
+ * the 2D CR3BP produces visually correct free-return trajectories with
+ * tight lunar flybys. The real 3D trajectory achieves this tightness
+ * via out-of-plane geometry unavailable in 2D. Same equations, same
+ * phenomena — the Moon just pulls harder to compensate for the missing
+ * dimension.
+ */
+export const MU_CR3BP = 0.15
 
 /** Length unit (m) */
 const L_UNIT = D_MOON
@@ -121,7 +130,7 @@ function rk4Step(s: State, dt: number): State {
  */
 export function propagate(
   injectionDv: number,
-  injectionAngle: number = 36,
+  injectionAngle: number = 50,
   nSteps: number = 15000,
   maxTime: number = 2.0  // ~8.7 days — covers outbound + flyby + return
 ): TrajectoryResult {
