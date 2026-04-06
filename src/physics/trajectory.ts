@@ -9,19 +9,16 @@
 import {
   LAUNCH_EPOCH,
   TLI_EPOCH,
-  R_LEO,
-  R_EARTH,
   MU_EARTH,
   D_MOON,
-  FLYBY_ALTITUDE,
   HEO_APOGEE,
   HEO_PERIGEE,
   T_MOON,
   MISSION_DURATION_DAYS,
 } from './constants'
-import { circularVelocity, orbitStateAtAnomaly, orbitalPeriod } from './orbits'
+import { orbitStateAtAnomaly, orbitalPeriod } from './orbits'
 import { meanAnomalyToTrue } from './kepler'
-import { computeFreeReturn } from './patched-conics'
+import { propagate } from './cr3bp'
 
 export interface TrajectoryPoint {
   /** Mission elapsed time (seconds from launch) */
@@ -107,12 +104,9 @@ export function computeArtemisTrajectory(
   const totalTime = MISSION_DURATION_DAYS * 86400
   const points: TrajectoryPoint[] = []
 
-  // Use the patched-conic solver to get the free-return trajectory
-  const vCircLEO = circularVelocity(MU_EARTH, R_LEO)
-  const injectionDv = 3170 // m/s from LEO — tuned for valid free-return
-  const injectionV = vCircLEO + injectionDv
-
-  const freeReturn = computeFreeReturn(injectionV, FLYBY_ALTITUDE)
+  // Use the CR3BP integrator for the free-return trajectory
+  // Points are time-ordered in the co-rotating frame
+  const cr3bpResult = propagate(3143, 36, 80000)
 
   // Time boundaries (seconds from launch)
   const tliTime = (TLI_EPOCH - LAUNCH_EPOCH) / 1000 // ~25.2 hours
@@ -147,91 +141,48 @@ export function computeArtemisTrajectory(
     })
   }
 
-  // Phase 2: Post-TLI — use the free-return trajectory
-  if (freeReturn) {
-    // Map the free-return trajectory points to mission time
-    // The free-return solver gives us spatial points but not time-stamped.
-    // We'll distribute the departure leg over the outbound transit time,
-    // the flyby over ~1 day, and the return over the remaining time.
-    const outboundDuration = 3 * 86400 // ~3 days outbound
-    const flybyDuration = 1 * 86400 // ~1 day around Moon
-    const returnDuration = 3.5 * 86400 // ~3.5 days return
+  // Phase 2: Post-TLI — use CR3BP trajectory points (already time-ordered)
+  if (cr3bpResult.success && cr3bpResult.points.length > 0) {
+    // CR3BP integration covers 4π normalized time ≈ 54.6 days with 80000 steps
+    // Post-TLI mission phase is ~7.5 days. Map CR3BP time to mission time.
+    const cr3bpTotalTime = (4 * Math.PI * T_MOON) / (2 * Math.PI) // physical seconds
+    const postTliDuration = totalTime - tliTime
+    const cr3bpPts = cr3bpResult.points
 
-    const depPts = freeReturn.departurePts
-    const flyPts = freeReturn.flybyPts
-    const retPts = freeReturn.returnPts
+    // Moon position in co-rotating frame (fixed at +x)
+    const moonXCorot = D_MOON
 
-    // Departure (TLI to SOI entry)
-    for (let t = tliTime; t < tliTime + outboundDuration; t += sampleInterval) {
-      const frac = (t - tliTime) / outboundDuration
-      const idx = Math.min(Math.floor(frac * depPts.length), depPts.length - 1)
-      const pt = depPts[idx]
+    for (let t = tliTime; t < totalTime; t += sampleInterval) {
+      const missionFrac = (t - tliTime) / postTliDuration
+      // Map to CR3BP index — use fraction of the post-TLI mission duration
+      // Scale so 7.5 days maps to the relevant portion of the CR3BP integration
+      const cr3bpFrac = missionFrac * (postTliDuration / cr3bpTotalTime)
+      if (cr3bpFrac >= 1) break
+      const idx = Math.min(Math.floor(cr3bpFrac * cr3bpPts.length), cr3bpPts.length - 1)
+      const pt = cr3bpPts[idx]
       if (!pt) continue
 
-      // Estimate velocity from adjacent points
-      const nextIdx = Math.min(idx + 1, depPts.length - 1)
-      const nextPt = depPts[nextIdx]!
-      const dt = sampleInterval
-      const vx = nextIdx > idx ? (nextPt.x - pt.x) / dt * (depPts.length / outboundDuration * sampleInterval) : 0
-      const vy = nextIdx > idx ? (nextPt.y - pt.y) / dt * (depPts.length / outboundDuration * sampleInterval) : 0
+      // Velocity from adjacent points
+      const nextIdx = Math.min(idx + 1, cr3bpPts.length - 1)
+      const nextPt = cr3bpPts[nextIdx]!
+      const cr3bpDt = cr3bpTotalTime / cr3bpPts.length
+      const vx = nextIdx > idx ? (nextPt.x - pt.x) / cr3bpDt : 0
+      const vy = nextIdx > idx ? (nextPt.y - pt.y) / cr3bpDt : 0
 
-      const distEarth = Math.sqrt(pt.x * pt.x + pt.y * pt.y)
-      const moonPos = getMoonPosition(t)
-      const distMoon = Math.sqrt((pt.x - moonPos.x) ** 2 + (pt.y - moonPos.y) ** 2)
-      const speed = Math.sqrt(vx * vx + vy * vy) || distEarth * 0.00001 // fallback
+      const distEarth = Math.sqrt(pt.x ** 2 + pt.y ** 2)
+      const distMoon = Math.sqrt((pt.x - moonXCorot) ** 2 + pt.y ** 2)
+      const speed = Math.sqrt(vx ** 2 + vy ** 2)
+
+      // Determine phase from distances
+      let phase: MissionPhase
+      if (distMoon < 1e8) phase = 'lunar-flyby'
+      else if (missionFrac < 0.4) phase = 'outbound'
+      else if (missionFrac > 0.9) phase = 'reentry'
+      else phase = 'return'
 
       points.push({
         t, x: pt.x, y: pt.y, vx, vy,
-        distEarth, distMoon, speed,
-        phase: 'outbound',
-      })
-    }
-
-    // Flyby
-    const flybyStart = tliTime + outboundDuration
-    for (let t = flybyStart; t < flybyStart + flybyDuration; t += sampleInterval) {
-      const frac = (t - flybyStart) / flybyDuration
-      const idx = Math.min(Math.floor(frac * flyPts.length), flyPts.length - 1)
-      const pt = flyPts[idx]
-      if (!pt) continue
-
-      const distEarth = Math.sqrt(pt.x * pt.x + pt.y * pt.y)
-      const moonPos = getMoonPosition(t)
-      const distMoon = Math.sqrt((pt.x - moonPos.x) ** 2 + (pt.y - moonPos.y) ** 2)
-
-      points.push({
-        t, x: pt.x, y: pt.y, vx: 0, vy: 0,
-        distEarth, distMoon, speed: 1000, // approximate
-        phase: 'lunar-flyby',
-      })
-    }
-
-    // Return
-    const returnStart = flybyStart + flybyDuration
-    for (let t = returnStart; t < totalTime; t += sampleInterval) {
-      const frac = (t - returnStart) / returnDuration
-      if (frac > 1) {
-        // Reentry phase — close to Earth
-        points.push({
-          t, x: R_EARTH * 1.01, y: 0, vx: 0, vy: -11000,
-          distEarth: R_EARTH * 1.01, distMoon: D_MOON,
-          speed: 11000, phase: 'reentry',
-        })
-        continue
-      }
-      const idx = Math.min(Math.floor(frac * retPts.length), retPts.length - 1)
-      const pt = retPts[idx]
-      if (!pt) continue
-
-      const distEarth = Math.sqrt(pt.x * pt.x + pt.y * pt.y)
-      const moonPos = getMoonPosition(t)
-      const distMoon = Math.sqrt((pt.x - moonPos.x) ** 2 + (pt.y - moonPos.y) ** 2)
-
-      points.push({
-        t, x: pt.x, y: pt.y, vx: 0, vy: 0,
-        distEarth, distMoon,
-        speed: Math.sqrt(MU_EARTH * (2 / distEarth - 1 / (distEarth * 0.6))), // vis-viva estimate
-        phase: t > totalTime - 0.5 * 86400 ? 'reentry' : 'return',
+        distEarth, distMoon, speed, phase,
       })
     }
   }
