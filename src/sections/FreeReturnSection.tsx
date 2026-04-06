@@ -48,8 +48,8 @@ export function FreeReturnSection() {
       transform.width = width
       transform.height = height
       // Frame: Earth left, Moon right, trajectory fills the canvas
-      transform.viewRadius = D_MOON * 0.75
-      transform.centerX = D_MOON * 0.5
+      transform.viewRadius = D_MOON * 1.15
+      transform.centerX = D_MOON * 0.45
 
       drawStars(ctx, width, height, dpr, 50, 73)
 
