@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { InteractiveFigure } from '../components/InteractiveFigure'
-import { LevelBlock, LevelText } from '../components/LevelText'
+import { LevelBlock } from '../components/LevelText'
 import { MathBlock } from '../components/MathBlock'
 import { MathFrac } from '../components/MathFrac'
 import { ScrubableNumber } from '../components/ScrubableNumber'
@@ -20,7 +20,6 @@ import { drawOrbitPath } from '../rendering/orbit-renderer'
 
 export function FreeReturnSection() {
   const [injectionDv, setInjectionDv] = useState(3060)
-  const [showInertial, setShowInertial] = useState(false)
   const { level } = useLevel()
 
   // Compute the trajectory (memoized — only recomputes when dv changes)
@@ -35,9 +34,9 @@ export function FreeReturnSection() {
 
   const trajectory = useMemo(
     () => solverResult.success
-      ? renderTrajectory(solverResult, showInertial ? 'inertial' : 'corotating')
+      ? renderTrajectory(solverResult)
       : null,
-    [solverResult, showInertial]
+    [solverResult]
   )
 
   // Main canvas: full Earth-Moon system with 3 trajectory segments
@@ -106,7 +105,7 @@ export function FreeReturnSection() {
         drawLegendItem('#27AE60', 'Return')
       }
     },
-    [trajectory, level, showInertial]
+    [trajectory, level]
   )
 
   // Inset canvas: zoomed flyby view

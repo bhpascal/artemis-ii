@@ -1,0 +1,247 @@
+# Simulating Artemis II's free-return lunar trajectory from first principles
+
+**A circumlunar free-return trajectory exploits the Moon's gravity to redirect a spacecraft back to Earth without propulsion after trans-lunar injection.** Artemis II, launched April 1, 2026, follows this profile: a ~388 m/s TLI burn from a high elliptical orbit sends Orion on a 4-day coast to the Moon, where it passes **~6,500 km above the far side**, experiences a ~40-minute communications blackout, then returns to Earth for reentry at ~25,000 mph — all without another engine firing. The trajectory forms a **figure-8 in the co-rotating frame** and a teardrop/elongated ellipse in the inertial frame. The Circular Restricted 3-Body Problem (CR3BP) captures this physics with elegant equations that can run in real-time JavaScript, making it the ideal model for an interactive visualization.
+
+---
+
+## How circumlunar free-return trajectories actually work
+
+The physics is deceptively simple. After TLI, the spacecraft follows what would be a highly eccentric ellipse around Earth if the Moon weren't there. But the Moon *is* there, and its gravity bends the trajectory. The critical geometry: the spacecraft approaches the Moon from the **leading side** — the side facing the Moon's direction of orbital motion. It then swings behind the **far side** (away from Earth), where lunar gravity rotates the velocity vector back toward Earth.
+
+This leading-side approach acts as a **gravitational brake** relative to Earth. The Moon's gravity decelerates the spacecraft (in the Earth-centered frame), bending its path into a return ellipse that intersects Earth's atmosphere. Had the spacecraft instead passed the Moon's trailing side, it would gain energy and escape to a larger orbit — useful for deep-space missions but fatal for crew return. **Every Apollo mission used the leading-side approach**, and Artemis II follows the same geometry.
+
+The injection velocity from a **185 km parking orbit is remarkably constrained**: Schwaniger's 1963 NASA analysis showed the perigee speed for trajectories passing between 2,000 and 20,000 km from the Moon falls within **10.84–10.92 km/s** regardless of exact flyby distance — a range of only 80 m/s. This corresponds to a TLI delta-v of **~3.13 km/s** above circular LEO velocity of ~7.78 km/s. The system is extraordinarily sensitive to initial conditions: tiny changes in injection angle or velocity produce wildly different outcomes — crash, escape, or safe return.
+
+The outbound leg takes **~3–4 days**, the return leg mirrors this, yielding a **6–8 day total** for a symmetric circumlunar free-return. Artemis II's 10-day mission is longer because the first 2 days are spent in Earth orbit performing systems checkout and a proximity operations demonstration before TLI.
+
+---
+
+## The figure-8 in the rotating frame and teardrop in the inertial frame
+
+In the **co-rotating (synodic) frame** where the Earth-Moon line is frozen, the free-return trajectory traces a **figure-8**: one large loop around Earth and one smaller loop around the Moon, connected at a crossing point on the Earth-Moon axis. The spacecraft moves **clockwise** (viewed from above the north pole) — retrograde relative to the Moon's orbital direction. It departs Earth on one side of the Earth-Moon line, crosses to the Moon's far side, loops behind the Moon, crosses back, and returns. The crossing of the Earth-Moon line creates the characteristic pinch point.
+
+In the **inertial frame**, the same trajectory appears as an elongated, teardrop-shaped loop. The spacecraft follows a highly eccentric Earth orbit that gets gravitationally deflected near the Moon. There is no figure-8 — that's an artifact of the rotating frame "freezing" the Moon's position.
+
+The relationship between frames is a time-dependent rotation. If (x, y) are rotating-frame coordinates and (X, Y) are inertial coordinates, with ω = 1 in non-dimensional units and t as time:
+
+**Position**: `X = x·cos(t) − y·sin(t)`, `Y = x·sin(t) + y·cos(t)`
+
+**Velocity** (includes the transport theorem correction): `Ẋ = (ẋ − y)·cos(t) − (ẏ + x)·sin(t)`, `Ẏ = (ẋ − y)·sin(t) + (ẏ + x)·cos(t)`
+
+The inverse: `x = X·cos(t) + Y·sin(t)`, `y = −X·sin(t) + Y·cos(t)`, and `ẋ = Ẋ·cos(t) + Ẏ·sin(t) + y`, `ẏ = −Ẋ·sin(t) + Ẏ·cos(t) − x`.
+
+---
+
+## CR3BP equations of motion: the complete formulation
+
+The CR3BP uses a **barycentric rotating frame** with non-dimensional units where the Earth-Moon distance = 1, the frame angular velocity ω = 1, and the total mass = 1. The single governing parameter is the **mass ratio μ = M_moon/(M_earth + M_moon) ≈ 0.01215**. Earth sits at (−μ, 0) and the Moon at (1−μ, 0).
+
+Define distances to each body:
+
+```
+σ = √[(x + μ)² + y²]       (distance to Earth)
+ψ = √[(x − 1 + μ)² + y²]   (distance to Moon)
+```
+
+The **equations of motion** (2D planar, ready for numerical integration):
+
+```
+ẍ =  2ẏ + x − (1−μ)(x+μ)/σ³ − μ(x−1+μ)/ψ³
+ÿ = −2ẋ + y − (1−μ)y/σ³     − μy/ψ³
+```
+
+The terms decompose as: **2ẏ and −2ẋ** are Coriolis acceleration (from the rotating frame); **x and y** on the right-hand side are centrifugal acceleration; the remaining terms are gravitational attraction from Earth and Moon respectively.
+
+The **Jacobi constant** — the only conserved quantity — serves as a numerical accuracy check:
+
+```
+C = (x² + y²) + 2(1−μ)/σ + 2μ/ψ − (ẋ² + ẏ²)
+```
+
+This should remain constant throughout integration. Drift in C signals insufficient integrator precision.
+
+### Non-dimensional unit conversions
+
+| Quantity | Formula | Earth-Moon value |
+|----------|---------|-----------------|
+| Length unit L* | Earth-Moon distance | 384,400 km |
+| Time unit T* | Period/(2π) | 375,700 s ≈ 4.35 days |
+| Velocity unit V* | L*/T* | **1.023 km/s** |
+| μ | M₂/(M₁+M₂) | **0.01215058** |
+| LEO radius (200 km) | (6371+200)/384400 | **0.01709** non-dim |
+| LEO velocity | 7.79/1.023 | **~7.61** non-dim |
+| TLI velocity | 10.84/1.023 | **~10.60** non-dim |
+
+---
+
+## Two approaches to initial conditions: Arenstorf orbit vs. LEO injection
+
+### The Arenstorf orbit — a known periodic free-return
+
+The cleanest way to produce a perfect figure-8 in a visualization uses the **Arenstorf orbit**, a periodic solution discovered in 1963. These are exact initial conditions (from Hairer, Nørsett & Wanner, confirmed across dozens of implementations):
+
+```
+μ  = 0.012277471
+x₀ = 0.994          (on Earth-Moon axis, just past Moon)
+y₀ = 0.0
+ẋ₀ = 0.0
+ẏ₀ = −2.00158510637908252240537862224
+T  = 17.0652165601579625588917206249   (period, non-dim)
+```
+
+This orbit starts near the Moon (x₀ = 0.994, while the Moon is at 1−μ ≈ 0.9877), with velocity **purely perpendicular to the Earth-Moon line** in the −y direction. The spacecraft swings around the Moon, makes a large loop around Earth, and returns — completing one figure-8 in time T ≈ 17.07 non-dimensional units ≈ **74.2 days**. This is the *periodic* version; real missions (Apollo, Artemis) fly a single non-periodic loop lasting ~6–8 days.
+
+The Arenstorf orbit is ideal for a **visualization demo** because it's periodic, producing a clean repeating figure-8. But it doesn't start from LEO.
+
+### LEO injection — more physically realistic
+
+For a trajectory starting from Earth orbit, set up injection at angle θ from the Earth-Moon line:
+
+**Position** (rotating frame): `x₀ = −μ + r_LEO·cos(θ)`, `y₀ = r_LEO·sin(θ)` where r_LEO ≈ 0.01709.
+
+**Velocity**: In the inertial frame, the post-TLI velocity is tangential to the orbit at magnitude v_TLI ≈ 10.60 (non-dim). Converting to the rotating frame:
+
+```
+ẋ₀ = −v_TLI·sin(θ) + y₀       (adding ω×r correction)
+ẏ₀ =  v_TLI·cos(θ) − x₀       (adding ω×r correction)
+```
+
+The injection angle θ for a circumlunar free-return is typically **~20–40 degrees** ahead of the Earth-Moon line (the exact value depends on desired flyby altitude and must be found by shooting/iteration). The spacecraft is launched "ahead" of the Moon so that it arrives at the Moon's position ~3 days later.
+
+**Finding the right θ and v_TLI requires a shooting method**: integrate forward, check if the trajectory passes behind the Moon at the desired altitude and returns to Earth at the correct perigee. Adjust θ and v_TLI iteratively. This is sensitive — variations of **0.1° in angle or 1 m/s in velocity** dramatically change the outcome.
+
+---
+
+## Patched conics vs. CR3BP vs. full ephemeris
+
+| Aspect | Patched conics | CR3BP | Full ephemeris |
+|--------|---------------|-------|----------------|
+| Fidelity | **Poor for lunar** — Moon's SOI (~66,000 km) spans 1/6 of the Earth-Moon distance | Good for preliminary design | Mission-grade |
+| Physics captured | Two-body segments stitched at SOI | Simultaneous gravity of both bodies, Lagrange points, manifolds | Real orbits, Sun, J2, everything |
+| Complexity | Analytical (simplest) | ~20 lines of ODE code | Requires ephemeris files (DE440) |
+| **Best for** | Conceptual understanding | **Educational visualization** | Actual mission planning |
+
+For a web visualization, **CR3BP is the clear winner**. It captures the essential three-body dynamics that produce the figure-8, runs fast enough for real-time animation, and the equations fit in a single function. Patched conics miss the continuous gravitational interplay that makes the trajectory beautiful and physically interesting. Full ephemeris is overkill and adds complexity without visual benefit.
+
+One caveat: for multi-day trajectories, the **Sun's gravity is non-negligible** — a Space Stack Exchange discussion of free-return simulations confirmed that omitting it causes trajectory degradation. For a visualization, this matters less (the qualitative shape is correct), but for quantitative accuracy, the Sun's tidal effect can be added as a perturbation.
+
+---
+
+## Working code: the complete implementation recipe
+
+### JavaScript CR3BP integration with RK4
+
+```javascript
+const MU = 0.012277471;  // Moon mass ratio
+
+function cr3bp(state) {
+    const [x, y, vx, vy] = state;
+    const mu = MU, mu1 = 1 - mu;
+    
+    // Distances to Earth and Moon
+    const dx1 = x + mu, dx2 = x - mu1;
+    const r1 = Math.sqrt(dx1*dx1 + y*y);
+    const r2 = Math.sqrt(dx2*dx2 + y*y);
+    const r1_3 = r1*r1*r1, r2_3 = r2*r2*r2;
+    
+    // Accelerations (Coriolis + centrifugal + gravity)
+    const ax = 2*vy + x - mu1*dx1/r1_3 - mu*dx2/r2_3;
+    const ay = -2*vx + y - mu1*y/r1_3 - mu*y/r2_3;
+    
+    return [vx, vy, ax, ay];
+}
+
+function rk4Step(state, dt) {
+    const k1 = cr3bp(state);
+    const s2 = state.map((s, i) => s + 0.5*dt*k1[i]);
+    const k2 = cr3bp(s2);
+    const s3 = state.map((s, i) => s + 0.5*dt*k2[i]);
+    const k3 = cr3bp(s3);
+    const s4 = state.map((s, i) => s + dt*k3[i]);
+    const k4 = cr3bp(s4);
+    return state.map((s, i) => 
+        s + (dt/6)*(k1[i] + 2*k2[i] + 2*k3[i] + k4[i])
+    );
+}
+```
+
+**Critical integration parameters**: Use a step size of **dt ≈ 0.0001** non-dimensional (≈37.6 seconds physical) for fixed-step RK4. This is small enough to handle close lunar approach. An adaptive RK45 (Dormand-Prince) is better but more complex to implement. **Monitor the Jacobi constant** — it should remain constant to at least 6 decimal places; drift indicates the step size is too large.
+
+### Frame conversion for dual-view display
+
+```javascript
+function toInertial(x, y, vx, vy, t) {
+    const c = Math.cos(t), s = Math.sin(t);
+    return {
+        X:  x*c - y*s,
+        Y:  x*s + y*c,
+        VX: (vx - y)*c - (vy + x)*s,
+        VY: (vx - y)*s + (vy + x)*c
+    };
+}
+```
+
+### Arenstorf orbit initial conditions (guaranteed figure-8)
+
+```javascript
+const state0 = [0.994, 0.0, 0.0, -2.0015851063790825];
+const period = 17.0652165601579625;
+// Integrate for one period → perfect closed figure-8
+```
+
+### LEO injection initial conditions (physically realistic)
+
+```javascript
+const rLEO = 6571 / 384400;  // ~0.01709
+const theta = 0.5;           // ~28.6° from Earth-Moon line (tune this!)
+const vTLI = 10.60;          // non-dim (~10.84 km/s)
+
+const x0 = -MU + rLEO * Math.cos(theta);
+const y0 = rLEO * Math.sin(theta);
+const vx0 = -vTLI * Math.sin(theta) + y0;  // rotating frame correction
+const vy0 =  vTLI * Math.cos(theta) - x0;  // rotating frame correction
+// Integrate forward ~6 non-dim time units (~26 days)
+// Tune theta and vTLI via shooting to hit desired flyby altitude
+```
+
+---
+
+## Artemis II specifics that constrain the visualization
+
+Artemis II's trajectory has distinctive parameters that differ from Apollo:
+
+- **Multi-burn TLI**: Unlike Apollo's single S-IVB burn, Artemis II builds velocity through multiple burns — the ICPS raises Orion to a high elliptical orbit (~70,000 km apogee), then the ESM engine performs the final **388 m/s** TLI from that orbit's perigee. The total energy input is equivalent to Apollo's ~3.13 km/s from LEO.
+- **High flyby altitude**: **~6,500 km above the lunar far side** — vastly higher than Apollo's ~110 km. This means the gravitational deflection is gentler and the small loop around the Moon (in the figure-8) is larger and less dramatic than Apollo's tight pass.
+- **Farthest human distance from Earth**: **406,773 km**, exceeding Apollo 13's record by ~6,600 km.
+- **~40-minute communications blackout** as the Moon blocks radio signals during far-side passage.
+- **Reentry at ~25,000 mph** (~11.1 km/s) — the fastest crewed reentry ever, using a modified direct-entry profile (skip reentry was eliminated after Artemis I heat shield concerns).
+- **Total duration**: ~10 days (April 1–10, 2026), with ~2 days in Earth orbit before TLI.
+
+For the visualization, the key Artemis II difference is the **high flyby altitude**. In the CR3BP, this means the pericynthion (closest approach to Moon) is at a distance of **~8,237 km from the Moon's center** (6,500 + 1,737 km radius), or about **0.02143** in non-dimensional units from the Moon's position. The figure-8's Moon loop will be noticeably wider than an Apollo-style trajectory.
+
+---
+
+## Practical visualization architecture
+
+The recommended approach for a 2D interactive web visualization:
+
+**Pre-compute the trajectory** at startup using RK4 integration, storing the full state array. Then animate playback by stepping through the array — this avoids frame drops from real-time integration. Two side-by-side HTML5 Canvas panels show the rotating frame (figure-8) and inertial frame (teardrop) simultaneously.
+
+The main challenge is **scale**: LEO radius (0.017) is 60× smaller than the Earth-Moon distance (1.0). Solutions include drawing Earth and Moon at exaggerated radii for visibility, and providing a zoom control or inset view near Earth for the departure/arrival phase.
+
+For the Arenstorf orbit, integrate for exactly one period T ≈ 17.065 to get a closed loop. For the LEO injection version, integrate for ~6 non-dimensional time units. Draw zero-velocity curves (contours of the Jacobi constant) as background context to show the energy landscape and Lagrange point gateways. Bold the spacecraft's current position and draw a fading trail showing the recent path.
+
+### Key open-source references for implementation
+
+- **Arenstorf orbit ICs**: Hairer et al., x₀=0.994, ẏ₀=−2.0016 — the canonical test problem
+- **orbital-mechanics.space** (Bryan Weber): Complete Python CR3BP derivation with code
+- **GravitySimulator.org** (TheHappyKoala): Working JavaScript free-return simulation with rotating frame toggle
+- **david-saint/artemis-ii-3d-simulation** on GitHub: Three.js Artemis II visualization
+- **MathWorks lunar free-return example**: Full ephemeris MATLAB implementation with post-TLI state vectors
+- **Nodraak blog**: Python/Rust free-return simulation with parameter sweep methodology
+
+---
+
+## Conclusion
+
+The CR3BP provides the perfect framework for an interactive Artemis II visualization — **20 lines of physics code** produce the essential three-body dynamics. The Arenstorf orbit (x₀ = 0.994, ẏ₀ = −2.0016, μ = 0.01228) gives a guaranteed periodic figure-8 for immediate visual gratification, while LEO injection with a shooting method produces the more physically realistic single-pass trajectory. The key insight is that **the figure-8 shape emerges naturally from the rotating frame** — no special tuning beyond correct initial conditions. The Moon's gravity does all the work, bending the trajectory through a retrograde hyperbolic arc on the far side and sending the spacecraft home. For Artemis II specifically, the unusually high flyby altitude (~6,500 km) produces a wider, gentler Moon loop than Apollo's tight passes, and the multi-burn TLI sequence is an operational detail that doesn't change the fundamental trajectory physics once the spacecraft is on the free-return path.

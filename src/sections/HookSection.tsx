@@ -3,6 +3,7 @@ import { InteractiveFigure } from '../components/InteractiveFigure'
 import { LevelBlock, LevelText } from '../components/LevelText'
 import { Sidenote } from '../components/Sidenote'
 import { useLevel } from '../hooks/useLevel'
+import { useLiveTelemetry } from '../hooks/useLiveTelemetry'
 import {
   LAUNCH_EPOCH,
   SPLASHDOWN_EPOCH,
@@ -23,9 +24,13 @@ import { ViewTransform, drawLabel } from '../rendering/canvas-utils'
 import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath, drawSpacecraft } from '../rendering/orbit-renderer'
 
+// Closest approach: ~T+5d 6h (from mission timeline)
+const FLYBY_EPOCH = Date.UTC(2026, 3, 7, 4, 35, 0) // April 7, 2026, ~04:35 UTC
+
 export function HookSection() {
   const { level } = useLevel()
   const [now, setNow] = useState(Date.now())
+  const live = useLiveTelemetry()
 
   // Pre-compute the smooth spatial trajectory (for the background path)
   const freeReturn = useMemo(() => {
@@ -197,6 +202,54 @@ export function HookSection() {
           MET: {formatMET(met)} — {formatCalendarDate(met)}
         </LevelText>
       </p>
+
+      {live.isLive && (
+        <p style={{
+          textAlign: 'center',
+          fontSize: '1.2rem',
+          color: '#333',
+          margin: '0.75rem 0',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.8,
+        }}>
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#27AE60', marginRight: 6, verticalAlign: 'middle', animation: 'pulse 2s infinite' }} />
+          <LevelText max={2}>
+            Orion is{' '}
+            <strong style={{ color: '#2E86C1' }}>{Math.round(live.earthDistKm).toLocaleString()}</strong> km
+            from Earth, going{' '}
+            <strong style={{ color: '#2E86C1' }}>{Math.round(live.speedKmH).toLocaleString()}</strong> km/h
+          </LevelText>
+          <LevelText min={3}>
+            Orion:{' '}
+            <strong style={{ color: '#2E86C1' }}>{Math.round(live.earthDistKm).toLocaleString()}</strong> km
+            from Earth{' · '}
+            <strong style={{ color: '#2E86C1' }}>{Math.round(live.moonDistKm).toLocaleString()}</strong> km
+            from Moon{' · '}
+            <strong style={{ color: '#2E86C1' }}>{Math.round(live.speedKmH).toLocaleString()}</strong> km/h
+          </LevelText>
+        </p>
+      )}
+
+      {(() => {
+        const msToFlyby = FLYBY_EPOCH - now
+        const hoursToFlyby = Math.abs(msToFlyby) / 3_600_000
+        const h = Math.floor(hoursToFlyby)
+        const m = Math.floor((hoursToFlyby - h) * 60)
+        if (msToFlyby > 3_600_000) {
+          return (
+            <p style={{ textAlign: 'center', fontSize: '1.15rem', color: '#E67E22', fontStyle: 'italic' }}>
+              Lunar closest approach in <strong>{h}h {m}m</strong>
+            </p>
+          )
+        } else if (msToFlyby > -3_600_000) {
+          return (
+            <p style={{ textAlign: 'center', fontSize: '1.3rem', color: '#E74C3C', fontWeight: 'bold' }}>
+              Closest approach NOW — 6,513 km from the Moon
+            </p>
+          )
+        }
+        return null // after flyby, no countdown
+      })()}
 
       <p>
         How does NASA know this path will bring them home?{' '}
