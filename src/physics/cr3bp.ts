@@ -28,8 +28,24 @@ import { D_MOON, T_MOON, R_EARTH, R_MOON, R_LEO } from './constants'
  * via out-of-plane geometry unavailable in 2D. Same equations, same
  * phenomena — the Moon just pulls harder to compensate for the missing
  * dimension.
+ *
+ * Retained for the LEO injection propagator. The Arenstorf orbit uses MU_REAL.
  */
 export const MU_CR3BP = 0.15
+
+/** Physical Earth-Moon mass ratio */
+export const MU_REAL = 0.012277471
+
+// ── Arenstorf orbit constants (Arenstorf 1963) ──
+
+/** Starting x-position (normalized, on Earth-Moon axis past the Moon) */
+const ARENSTORF_X0 = 0.994
+
+/** Starting y-velocity — the precise value that produces a periodic orbit */
+const ARENSTORF_VY0 = -2.00158510637908252240537862224
+
+/** Orbital period in normalized time units (~74.2 days physical) */
+const ARENSTORF_PERIOD = 17.0652165601579625588917206249
 
 /** Length unit (m) */
 const L_UNIT = D_MOON
@@ -66,8 +82,7 @@ export interface TrajectoryResult {
 // ── CR3BP dynamics ──
 
 /** Jacobi constant (energy integral of the CR3BP) */
-export function jacobiConstant(x: number, y: number, vx: number, vy: number): number {
-  const mu = MU_CR3BP
+export function jacobiConstant(x: number, y: number, vx: number, vy: number, mu: number = MU_CR3BP): number {
   const r1 = Math.sqrt((x + mu) ** 2 + y ** 2)
   const r2 = Math.sqrt((x - 1 + mu) ** 2 + y ** 2)
   const omega = 0.5 * (x ** 2 + y ** 2) + (1 - mu) / r1 + mu / r2
@@ -75,8 +90,7 @@ export function jacobiConstant(x: number, y: number, vx: number, vy: number): nu
 }
 
 /** CR3BP acceleration */
-function accel(s: State): { ax: number; ay: number } {
-  const mu = MU_CR3BP
+function accel(s: State, mu: number): { ax: number; ay: number } {
   const r1 = Math.sqrt((s.x + mu) ** 2 + s.y ** 2)
   const r2 = Math.sqrt((s.x - 1 + mu) ** 2 + s.y ** 2)
   const r1_3 = r1 * r1 * r1
@@ -89,9 +103,9 @@ function accel(s: State): { ax: number; ay: number } {
 }
 
 /** RK4 integration step */
-function rk4Step(s: State, dt: number): State {
+function rk4Step(s: State, dt: number, mu: number): State {
   function deriv(st: State): [number, number, number, number] {
-    const { ax, ay } = accel(st)
+    const { ax, ay } = accel(st, mu)
     return [st.vx, st.vy, ax, ay]
   }
 
@@ -230,7 +244,7 @@ export function propagate(
     }
 
     // Integrate
-    state = rk4Step(state, dt)
+    state = rk4Step(state, dt, mu)
   }
 
   const flybyAltitude = minMoonDist * L_UNIT - R_MOON
@@ -242,6 +256,92 @@ export function propagate(
     flybyAltitude,
     returnPerigee,
     hitsEarth,
+    maxDistance: maxEarthDist * L_UNIT,
+    success: true,
+  }
+}
+
+/**
+ * Propagate the Arenstorf periodic orbit.
+ *
+ * Uses the exact initial conditions discovered by Arenstorf (1963) that
+ * produce a closed figure-8 in the CR3BP at the real Earth-Moon mass ratio.
+ * No mass enhancement needed.
+ *
+ * @param vyPerturbation — velocity perturbation in normalized units (0 = exact periodic orbit)
+ * @param nSteps — integration steps (default 50000 for accuracy over the long period)
+ */
+export function propagateArenstorf(
+  vyPerturbation: number = 0,
+  nSteps: number = 50000,
+): TrajectoryResult {
+  const mu = MU_REAL
+
+  let state: State = {
+    x: ARENSTORF_X0,
+    y: 0,
+    vx: 0,
+    vy: ARENSTORF_VY0 + vyPerturbation,
+  }
+
+  const maxTime = ARENSTORF_PERIOD
+  const dt = maxTime / nSteps
+
+  const points: Array<{ x: number; y: number; t: number }> = []
+  let minMoonDist = Infinity
+  let minEarthDist = Infinity
+  let maxEarthDist = 0
+
+  const sampleEvery = Math.max(1, Math.floor(nSteps / 1500))
+
+  for (let i = 0; i <= nSteps; i++) {
+    const r1 = Math.sqrt((state.x + mu) ** 2 + state.y ** 2)
+    const r2 = Math.sqrt((state.x - 1 + mu) ** 2 + state.y ** 2)
+
+    if (i % sampleEvery === 0) {
+      points.push({
+        x: (state.x + mu) * L_UNIT,
+        y: state.y * L_UNIT,
+        t: i * dt * T_UNIT,
+      })
+    }
+
+    if (r2 < minMoonDist) minMoonDist = r2
+    if (r1 > maxEarthDist) maxEarthDist = r1
+    if (r1 < minEarthDist) minEarthDist = r1
+
+    // Crash detection
+    if (r1 < R_EARTH_NORM) {
+      return {
+        points,
+        flybyAltitude: minMoonDist * L_UNIT - R_MOON,
+        returnPerigee: -1,
+        hitsEarth: false,
+        maxDistance: maxEarthDist * L_UNIT,
+        success: false,
+        error: 'Crashed into Earth',
+      }
+    }
+    if (r2 < R_MOON_NORM) {
+      return {
+        points,
+        flybyAltitude: -1,
+        returnPerigee: -1,
+        hitsEarth: false,
+        maxDistance: maxEarthDist * L_UNIT,
+        success: false,
+        error: 'Crashed into Moon',
+      }
+    }
+
+    state = rk4Step(state, dt, mu)
+  }
+
+  return {
+    points,
+    flybyAltitude: minMoonDist * L_UNIT - R_MOON,
+    returnPerigee: minEarthDist * L_UNIT - R_EARTH,
+    hitsEarth: false,
     maxDistance: maxEarthDist * L_UNIT,
     success: true,
   }

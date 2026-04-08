@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { InteractiveFigure } from '../components/InteractiveFigure'
 import { LevelBlock } from '../components/LevelText'
-import { MathBlock } from '../components/MathBlock'
-import { MathFrac } from '../components/MathFrac'
 import { ScrubableNumber } from '../components/ScrubableNumber'
 import { Sidenote } from '../components/Sidenote'
 import { useLevel } from '../hooks/useLevel'
@@ -12,29 +10,30 @@ import {
   D_MOON,
   SOI_MOON,
 } from '../physics/constants'
-import { solve } from '../physics/trajectory-solver'
-import { renderTrajectory } from '../physics/trajectory-renderer'
+import { solveArenstorf } from '../physics/trajectory-solver'
+import { renderArenstorfTrajectory } from '../physics/trajectory-renderer'
 import { ViewTransform, drawLabel, drawLine } from '../rendering/canvas-utils'
 import { drawEarth, drawMoon, drawStars } from '../rendering/body-renderer'
 import { drawOrbitPath } from '../rendering/orbit-renderer'
 
 export function FreeReturnSection() {
-  const [injectionDv, setInjectionDv] = useState(3060)
+  const [perturbation, setPerturbation] = useState(0)
   const { level } = useLevel()
 
-  // Compute the trajectory (memoized — only recomputes when dv changes)
   const solverResult = useMemo(
-    () => solve(injectionDv),
-    [injectionDv]
+    () => solveArenstorf(perturbation),
+    [perturbation]
   )
 
   const flybyAlt = solverResult.flybyAltitude >= 0
     ? Math.round(solverResult.flybyAltitude / 1000)
     : 0
 
+  const isPerfect = perturbation === 0
+
   const trajectory = useMemo(
     () => solverResult.success
-      ? renderTrajectory(solverResult)
+      ? renderArenstorfTrajectory(solverResult)
       : null,
     [solverResult]
   )
@@ -46,9 +45,9 @@ export function FreeReturnSection() {
       transform.dpr = dpr
       transform.width = width
       transform.height = height
-      // Frame: Earth left, Moon right, trajectory fills the canvas
-      transform.viewRadius = D_MOON * 1.15
-      transform.centerX = D_MOON * 0.45
+      // Frame: center the Arenstorf figure-8 (extends ~1.2 D_MOON past Earth)
+      transform.viewRadius = D_MOON * 1.35
+      transform.centerX = -D_MOON * 0.1
 
       drawStars(ctx, width, height, dpr, 50, 73)
 
@@ -67,21 +66,13 @@ export function FreeReturnSection() {
         // Moon
         drawMoon(ctx, transform, mPos.x, mPos.y, R_MOON, 8)
 
-        // Status label — positioned at top center of canvas, not overlapping anything
+        // Status label
         const statusY = 24 * dpr
         const statusX = width * dpr / 2
-        if (solverResult.hitsEarth) {
-          drawLabel(ctx, 'Returns to Earth!', statusX, statusY, '#27AE60', 15 * dpr, 'center')
-        } else if (solverResult.returnPerigeeAlt > 200e3) {
-          drawLabel(ctx, 'Misses Earth — too shallow', statusX, statusY, '#E67E22', 15 * dpr, 'center')
-        } else if (solverResult.returnPerigeeAlt < 0) {
-          drawLabel(ctx, 'Too steep — hits the atmosphere', statusX, statusY, '#E74C3C', 15 * dpr, 'center')
-        }
-
-        // Turn angle — next to Moon, only at L3+
-        if (level >= 3) {
-          const [mx, my] = transform.toScreen(mPos.x, mPos.y)
-          drawLabel(ctx, `δ = ${(solverResult.turnAngle * 180 / Math.PI).toFixed(1)}°`, mx, my + 20 * dpr, '#E74C3C', 12 * dpr, 'center')
+        if (isPerfect) {
+          drawLabel(ctx, 'Periodic orbit \u2014 perfect figure-eight', statusX, statusY, '#27AE60', 15 * dpr, 'center')
+        } else if (solverResult.success) {
+          drawLabel(ctx, 'Perturbed \u2014 orbit no longer closes', statusX, statusY, '#E67E22', 15 * dpr, 'center')
         }
       } else {
         const statusX = width * dpr / 2
@@ -100,12 +91,12 @@ export function FreeReturnSection() {
           drawLabel(ctx, label, lx + 25 * dpr, ly, '#555', 12 * dpr)
           ly += 18 * dpr
         }
-        drawLegendItem('#2E86C1', 'Departure')
+        drawLegendItem('#2E86C1', 'Outbound')
         drawLegendItem('#E74C3C', 'Lunar flyby')
         drawLegendItem('#27AE60', 'Return')
       }
     },
-    [trajectory, level]
+    [trajectory, level, isPerfect]
   )
 
   // Inset canvas: zoomed flyby view
@@ -211,119 +202,122 @@ export function FreeReturnSection() {
 
       <LevelBlock level={1}>
         <p>
-          Here is the really cool part. After the rocket gives the
-          spaceship one big push, the Moon acts like a giant slingshot!
-          If the spaceship flies by at just the right distance, the
-          Moon's gravity grabs it, swings it around, and flings it
-          right back home. No engine needed!
+          This is a perfect figure-eight! A spaceship loops around
+          the Earth, swings past the Moon, and comes right back —
+          over and over, forever. The Moon's gravity does all the
+          steering. No engine needed!
         </p>
         <p>
-          Try changing how close the spaceship passes to the Moon:
+          Try nudging the speed to see what happens when it is
+          not exactly right:
         </p>
       </LevelBlock>
 
       <LevelBlock level={2}>
         <p>
-          After the trans-lunar injection burn, the spacecraft coasts
-          toward the Moon. When it gets close, the Moon's gravity bends
-          its path — like rolling a ball past a heavy bowling ball on a
-          trampoline. If the flyby distance is just right, the spacecraft
-          swings around and heads straight back to Earth. No engine needed.
+          When the speed is exactly right, the spacecraft traces a
+          perfect figure-eight, looping around Earth and Moon forever.
+          This shape is called a free-return trajectory — the same
+          kind of path that saved the Apollo 13 crew when their engine
+          failed. Try changing the speed. Even a tiny change breaks
+          the pattern!
         </p>
       </LevelBlock>
 
       <LevelBlock level={3}>
         <p>
-          Here is the beautiful part. After the trans-lunar injection
-          burn, the spacecraft follows a path that loops around the
-          Moon's far side and returns to Earth{' '}
-          <em>without any additional engine burn</em>. The Moon's gravity
-          does all the redirection. This is called a free-return
-          trajectory, and it is the ultimate safety feature.
+          In 1963, mathematician Richard Arenstorf discovered that the
+          three-body problem has exact periodic solutions — trajectories
+          where a spacecraft traces a perfect figure-eight around the
+          Earth and Moon, returning to its exact starting point. This
+          free-return shape is the foundation of the Artemis II
+          trajectory.
           <Sidenote number={6}>
             In April 1970, an oxygen tank exploded on Apollo 13,
             disabling the main engine. The crew survived because they
             were on a free-return trajectory. The Moon brought them home.
           </Sidenote>
         </p>
+        <p>
+          Try perturbing the velocity to see how sensitive this orbit
+          is to initial conditions:
+        </p>
       </LevelBlock>
 
       <LevelBlock level={4}>
         <p>
-          Here is the key insight that makes the free return work: in
-          the Moon's reference frame, the spacecraft's <em>speed</em> is
-          unchanged by the flyby. The Moon's gravity can redirect the
-          spacecraft — bend its path by a large angle — but it cannot
-          add or remove speed relative to the Moon itself. So what is
-          the trick? Changing the <em>direction</em> of the velocity
-          vector in the Moon's frame changes its <em>magnitude</em> in
-          Earth's frame. The spacecraft approaches from one direction
-          and leaves in another; when you transform back to the
-          Earth-centered frame, the speed relative to Earth is different.
-          This frame transformation is the entire mechanism of the
-          gravitational slingshot.
+          The Arenstorf orbit is an exact periodic solution to the
+          circular restricted three-body problem at the real Earth-Moon
+          mass ratio {'\u03BC'} = 0.0123. Unlike the two-body problem, where
+          all bound orbits are periodic, periodic orbits in the
+          three-body problem are rare and fragile. This figure-eight
+          closes after {'\u223C'}74 days. The slightest perturbation to the
+          initial velocity breaks the periodicity — the trajectory
+          diverges, never exactly repeating. This sensitivity is
+          characteristic of chaotic dynamics in the three-body problem.
           <Sidenote number={6}>
-            In April 1970, an oxygen tank exploded on Apollo 13,
-            disabling the main engine. The crew survived because they
-            were on a free-return trajectory. The Moon brought them home.
+            Apollo 13 exploited the robustness of the free-return
+            shape even though it is not periodic from LEO. The
+            Arenstorf orbit is the idealized version — the Platonic
+            form of the free return.
           </Sidenote>
         </p>
       </LevelBlock>
 
       <LevelBlock level={5}>
         <p>
-          The free-return trajectory is a three-body phenomenon that
-          the patched-conic approximation captures remarkably well.
-          The reason is geometric: the Moon's sphere of influence
-          (~66,000 km) is small compared to the Earth-Moon distance
-          (384,400 km), so the abrupt frame switch at the SOI boundary
-          introduces only a small error. The deeper reason this
-          trajectory exists at all is that gravity is conservative. The
-          spacecraft's total energy is fixed after TLI. The frame
-          transformations at the SOI boundaries reshuffle kinetic and
-          potential energy between the Earth and Moon contributions but
-          preserve the total. The return to Earth is not a fine-tuned
-          miracle — it is a consequence of the energy level being high
-          enough to reach the Moon but too low to escape.
+          The Arenstorf orbit belongs to a family of periodic solutions
+          in the CR3BP, discovered by numerical continuation from the
+          two-body limit. It is a fixed point of the Poincar{'\u00E9'} return
+          map on a surface of section crossing the Earth-Moon axis.
+          The Jacobi constant C<sub>J</sub> constrains the accessible
+          region but does not guarantee periodicity — that requires the
+          orbit to satisfy the boundary-value problem of exact return.
+          The perturbation slider lets you explore the neighborhood of
+          this fixed point: small deviations grow, demonstrating the
+          fundamental instability of three-body periodic orbits. The
+          free-return trajectory used by Artemis II is not itself
+          periodic (it starts from LEO), but it shadows this Arenstorf
+          orbit during the critical translunar and flyby phases.
           <Sidenote number={6}>
-            Apollo 13 demonstrated the robustness of free-return
-            trajectories. The Jacobi constant of the circular restricted
-            three-body problem makes this precise: the energy level that
-            permits passage from Earth's vicinity through the L1 neck
-            to the Moon's vicinity also permits return. Small
-            perturbations cannot close the neck.
+            The Jacobi constant of this orbit sits just above the
+            L1 threshold, permitting passage through the neck between
+            Earth and Moon vicinities. This is the topological reason
+            the free return works as a safety feature — the energy
+            level that allows outbound passage also allows return.
           </Sidenote>
         </p>
       </LevelBlock>
 
       <p>
-        Injection Δv:{' '}
+        Velocity perturbation:{' '}
         <ScrubableNumber
-          initial={3060}
-          min={3040}
-          max={3080}
-          step={1}
+          initial={0}
+          min={-30}
+          max={30}
+          step={0.5}
           sensitivity={3}
-          precision={0}
+          precision={1}
           unit=" m/s"
-          value={injectionDv}
-          onChange={setInjectionDv}
+          value={perturbation}
+          onChange={setPerturbation}
         />
       </p>
 
       <input
         type="range"
         className="scrub-slider"
-        min={3040}
-        max={3080}
-        step={1}
-        value={injectionDv}
-        onChange={(e) => setInjectionDv(Number(e.target.value))}
+        min={-30}
+        max={30}
+        step={0.5}
+        value={perturbation}
+        onChange={(e) => setPerturbation(Number(e.target.value))}
       />
 
       <LevelBlock min={3}>
         <p style={{ fontSize: '1.2rem', color: '#666' }}>
-          Flyby altitude: {flybyAlt > 0 ? flybyAlt.toLocaleString() : '—'} km
+          Flyby altitude: {flybyAlt > 0 ? flybyAlt.toLocaleString() : '\u2014'} km
+          {isPerfect && ' (periodic)'}
         </p>
       </LevelBlock>
 
@@ -337,76 +331,51 @@ export function FreeReturnSection() {
       <LevelBlock min={3}>
         {trajectory ? (
           <p>
-            {solverResult.hitsEarth ? (
+            {isPerfect ? (
               <>
-                The return trajectory targets Earth with a perigee
-                altitude of {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km —
-                within the reentry corridor.
-                {level >= 4 && <> Turn angle: {(solverResult.turnAngle * 180 / Math.PI).toFixed(1)}°.
-                Hyperbolic eccentricity: {solverResult.flybyEccentricity.toFixed(3)}.</>}
-              </>
-            ) : solverResult.returnPerigeeAlt > 200e3 ? (
-              <>
-                The return trajectory misses Earth — perigee
-                is {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km altitude,
-                too high for atmospheric capture. Try a lower flyby altitude.
-              </>
-            ) : solverResult.returnPerigeeAlt < 0 ? (
-              <>
-                The return trajectory hits Earth too steeply (perigee
-                below surface). The turn angle is too large. Try a higher
-                flyby altitude.
+                At zero perturbation, this is the exact Arenstorf periodic
+                orbit. The spacecraft returns to its starting point after
+                one period — a perfect closed loop at the real Earth-Moon
+                mass ratio. No mass enhancement, no approximations.
               </>
             ) : (
               <>
-                The return trajectory skims the atmosphere
-                at {(solverResult.returnPerigeeAlt / 1000).toFixed(0)} km.
-                Adjust the flyby altitude to target 50–200 km.
+                The orbit no longer closes. A perturbation
+                of {Math.abs(perturbation).toFixed(1)} m/s shifts the
+                trajectory enough that it misses the starting point after
+                one period. In the three-body problem, this sensitivity
+                is the rule, not the exception.
               </>
             )}
           </p>
         ) : (
-          <p>No valid trajectory at these parameters. Try adjusting the injection velocity.</p>
+          <p>No valid trajectory at these parameters. Try a smaller perturbation.</p>
         )}
       </LevelBlock>
 
       <LevelBlock max={2}>
         {trajectory ? (
           <p>
-            {solverResult.hitsEarth ? (
-              <>The spaceship comes back to Earth! That is the sweet spot!</>
-            ) : solverResult.returnPerigeeAlt > 200e3 ? (
-              <>The spaceship misses Earth. Try bringing it closer to the Moon.</>
+            {isPerfect ? (
+              <>The spaceship traces a perfect figure-eight! It comes back to exactly where it started.</>
             ) : (
-              <>Too close! The spaceship comes in too steep. Move it farther from the Moon.</>
+              <>The path is not quite right anymore. See how even a tiny change messes up the orbit?</>
             )}
           </p>
         ) : (
-          <p>The orbit is not right. Try different settings.</p>
+          <p>The orbit crashed! Try a smaller change.</p>
         )}
-      </LevelBlock>
-
-      <LevelBlock min={3}>
-        <MathBlock>
-          δ = 2 arcsin
-          <span style={{ margin: '0 0.15em' }}>(</span>
-          <MathFrac num={<>1</>} den={<var>e</var>} />
-          <span style={{ margin: '0 0.15em' }}>)</span>
-        </MathBlock>
       </LevelBlock>
 
       <LevelBlock level={4}>
         <p>
-          The turn angle equation captures a competition between two
-          effects. A faster approach (larger v<sub>∞</sub>) means the
-          spacecraft spends less time in the Moon's gravity well, so it
-          gets deflected less: higher speed, less bending. A closer pass
-          (smaller r<sub>p</sub>) means stronger gravitational force
-          along more of the trajectory: closer, more bending. The
-          hyperbolic eccentricity encodes both in a single number.
-          When <var>e</var> is close to 1, the turn angle approaches
-          180° — a near-U-turn. When <var>e</var> is large, the Moon
-          barely deflects the path.
+          The Arenstorf orbit demonstrates a deep feature of the
+          three-body problem: periodic orbits are isolated and unstable.
+          Unlike the two-body problem, where any initial condition on a
+          bound orbit is periodic, here the slightest deviation from
+          the exact initial conditions causes the trajectory to diverge.
+          The figure-eight exists at a single precise velocity — it is
+          a measure-zero set in the space of initial conditions.
         </p>
       </LevelBlock>
 

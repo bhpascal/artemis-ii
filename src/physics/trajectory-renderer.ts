@@ -72,3 +72,73 @@ export function renderTrajectory(
     moonPos: { x: moonX, y: moonY },
   }
 }
+
+/**
+ * Segment an Arenstorf orbit into outbound, flyby, and return arcs.
+ *
+ * The Arenstorf orbit starts near the Moon, so the segmentation is:
+ *   initial flyby → earth loop (outbound + return) → final flyby
+ *
+ * We combine the initial and final flyby segments into flybyPts,
+ * and split the earth loop into departurePts and returnPts at the
+ * point farthest from the Moon (the Earth-side apex).
+ */
+export function renderArenstorfTrajectory(
+  result: TrajectoryResult,
+): TrajectoryPoints | null {
+  if (!result.success || result.points.length === 0) return null
+
+  const moonX = D_MOON
+  const moonY = 0
+  const flybyThreshold = D_MOON * 0.35
+
+  // Phase 1: Find the three segments
+  const initialFlyby: Array<{ x: number; y: number; t: number }> = []
+  const earthLoop: Array<{ x: number; y: number; t: number }> = []
+  const finalFlyby: Array<{ x: number; y: number; t: number }> = []
+
+  let phase: 'initial' | 'earth' | 'final' = 'initial'
+
+  for (const pt of result.points) {
+    const moonDist = Math.sqrt((pt.x - moonX) ** 2 + (pt.y - moonY) ** 2)
+
+    if (phase === 'initial') {
+      initialFlyby.push(pt)
+      if (moonDist > flybyThreshold) {
+        phase = 'earth'
+        earthLoop.push(pt)
+      }
+    } else if (phase === 'earth') {
+      earthLoop.push(pt)
+      if (moonDist < flybyThreshold) {
+        phase = 'final'
+        finalFlyby.push(pt)
+      }
+    } else {
+      finalFlyby.push(pt)
+    }
+  }
+
+  // Phase 2: Split the earth loop at its apex (farthest from Moon)
+  let apexIdx = 0
+  let maxMoonDist = 0
+  for (let i = 0; i < earthLoop.length; i++) {
+    const pt = earthLoop[i]!
+    const d = Math.sqrt((pt.x - moonX) ** 2 + (pt.y - moonY) ** 2)
+    if (d > maxMoonDist) {
+      maxMoonDist = d
+      apexIdx = i
+    }
+  }
+
+  const departurePts = earthLoop.slice(0, apexIdx + 1)
+  const returnPts = earthLoop.slice(apexIdx)
+  const flybyPts = [...finalFlyby, ...initialFlyby]
+
+  return {
+    departurePts,
+    flybyPts,
+    returnPts,
+    moonPos: { x: moonX, y: moonY },
+  }
+}
