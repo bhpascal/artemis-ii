@@ -20,20 +20,15 @@ import { D_MOON, T_MOON, R_EARTH, R_MOON, R_LEO } from './constants'
 // ── Constants ──
 
 /**
- * Moon mass parameter — enhanced for 2D visualization.
+ * Physical Earth-Moon mass ratio. Used for all CR3BP computations.
  *
- * The physical value is 0.0122. We use 0.15 (≈12× enhancement) so that
- * the 2D CR3BP produces visually correct free-return trajectories with
- * tight lunar flybys. The real 3D trajectory achieves this tightness
- * via out-of-plane geometry unavailable in 2D. Same equations, same
- * phenomena — the Moon just pulls harder to compensate for the missing
- * dimension.
- *
- * Retained for the LEO injection propagator. The Arenstorf orbit uses MU_REAL.
+ * An earlier version of this file used an enhanced value (0.15) under
+ * the belief that tight 2D lunar flybys were impossible at the real
+ * mass ratio. That turned out to be wrong: 2D free returns at real μ
+ * do exist, they just need the right injection angle (~65° from anti-
+ * lunar) and Δv (~3142 m/s). Apollo 13 flew an approximately 2D free
+ * return at the real mass ratio.
  */
-export const MU_CR3BP = 0.15
-
-/** Physical Earth-Moon mass ratio */
 export const MU_REAL = 0.012277471
 
 // ── Arenstorf orbit constants (Arenstorf 1963) ──
@@ -82,7 +77,7 @@ export interface TrajectoryResult {
 // ── CR3BP dynamics ──
 
 /** Jacobi constant (energy integral of the CR3BP) */
-export function jacobiConstant(x: number, y: number, vx: number, vy: number, mu: number = MU_CR3BP): number {
+export function jacobiConstant(x: number, y: number, vx: number, vy: number, mu: number = MU_REAL): number {
   const r1 = Math.sqrt((x + mu) ** 2 + y ** 2)
   const r2 = Math.sqrt((x - 1 + mu) ** 2 + y ** 2)
   const omega = 0.5 * (x ** 2 + y ** 2) + (1 - mu) / r1 + mu / r2
@@ -134,25 +129,32 @@ function rk4Step(s: State, dt: number, mu: number): State {
 // ── Public API ──
 
 /**
- * Propagate a free-return trajectory from LEO injection.
+ * Propagate a free-return trajectory from LEO injection at real μ.
+ *
+ * The default (Δv=3142, angle=65°) lands on the 2D free-return sweet
+ * spot at real mass ratio: Moon flyby at T+4.6 days at ~21,000 km
+ * altitude, return perigee at ~550 km (atmospheric reentry). The real
+ * Artemis II flyby is tighter (~6,500 km); the extra wideness is the
+ * price of strict 2D geometry — the real mission uses a slightly
+ * inclined TLI to sharpen the flyby in 3D.
  *
  * @param injectionDv — delta-v above circular velocity (m/s)
- * @param injectionAngle — angle from anti-lunar point (degrees, default 35)
- *   0° = anti-lunar, 35° = leads the Moon (produces correct free-return geometry)
- * @param nSteps — integration steps (default 50000)
- * @param maxTime — max integration time in normalized units (default 4π ≈ 2 Moon orbits)
+ * @param injectionAngle — angle from anti-lunar point (degrees)
+ *   0° = anti-lunar, 65° ≈ free-return sweet spot at real μ
+ * @param nSteps — integration steps
+ * @param maxTime — max integration time in normalized units (2.3 ≈ 10 days)
  */
 export function propagate(
   injectionDv: number,
-  injectionAngle: number = 50,
-  nSteps: number = 15000,
-  maxTime: number = 2.0  // ~8.7 days — covers outbound + flyby + return
+  injectionAngle: number = 65,
+  nSteps: number = 30000,
+  maxTime: number = 2.3
 ): TrajectoryResult {
-  const mu = MU_CR3BP
+  const mu = MU_REAL
 
   // Injection from LEO at a lead angle ahead of the anti-lunar point.
-  // angle=0° is the anti-lunar point; ~36° produces a direct transfer
-  // that reaches the Moon in ~3 days with visible gravitational deflection.
+  // angle=0° is the anti-lunar point; ~65° produces the sweet-spot
+  // 2D free-return at real μ (flyby ~21,000 km, reentry at ~550 km).
   const rLeo = R_LEO / L_UNIT
   const theta = (injectionAngle * Math.PI) / 180
   const x0 = -mu + rLeo * Math.cos(Math.PI + theta)

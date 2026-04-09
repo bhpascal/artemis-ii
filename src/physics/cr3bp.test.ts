@@ -12,7 +12,6 @@ import {
   propagate,
   jacobiConstant,
   MU_REAL,
-  MU_CR3BP,
 } from './cr3bp'
 import { D_MOON, R_MOON, R_EARTH } from './constants'
 
@@ -123,25 +122,36 @@ describe('propagateArenstorf with perturbation', () => {
   })
 })
 
-// ── LEO injection propagator (legacy, still used by mission section) ──
+// ── LEO injection propagator at real μ ──
 
-describe('propagate (LEO injection)', () => {
-  it('produces a trajectory at Δv=3060', () => {
-    const result = propagate(3060)
+describe('propagate (LEO injection at real μ)', () => {
+  it('produces a valid free-return trajectory at the sweet spot', () => {
+    // Δv=3142, default angle=65° lands on the sweet-spot solution
+    const result = propagate(3142)
     expect(result.success).toBe(true)
-    expect(result.points.length).toBeGreaterThan(50)
+    expect(result.points.length).toBeGreaterThan(500)
+  })
+
+  it('reaches the Moon and performs a flyby', () => {
+    const result = propagate(3142)
+    // Flyby altitude should be within ~50,000 km (2D wide flybys are expected)
+    expect(result.flybyAltitude).toBeGreaterThan(0)
+    expect(result.flybyAltitude).toBeLessThan(50_000_000) // 50,000 km
   })
 
   it('reaches lunar distance', () => {
-    const result = propagate(3060)
-    // Max distance should be at least 50% of the way to the Moon
-    expect(result.maxDistance).toBeGreaterThan(D_MOON * 0.5)
+    const result = propagate(3142)
+    expect(result.maxDistance).toBeGreaterThan(D_MOON * 0.9)
   })
 
-  it('uses enhanced μ (not real μ)', () => {
-    // The LEO propagator uses MU_CR3BP = 0.15, not MU_REAL = 0.012
-    // This is a guard against accidentally switching it
-    expect(MU_CR3BP).toBeCloseTo(0.15, 2)
+  it('returns near Earth (closes the free-return loop)', () => {
+    const result = propagate(3142)
+    // Return perigee should be within a few thousand km of Earth surface
+    expect(result.returnPerigee).toBeGreaterThan(-R_EARTH) // may dip below surface
+    expect(result.returnPerigee).toBeLessThan(10_000_000) // within 10,000 km
+  })
+
+  it('uses real μ, not enhanced', () => {
     expect(MU_REAL).toBeCloseTo(0.01228, 4)
   })
 })

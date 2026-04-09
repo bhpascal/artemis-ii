@@ -59,7 +59,7 @@ describe('renderArenstorfTrajectory', () => {
 })
 
 describe('renderTrajectory (LEO injection)', () => {
-  const result = propagate(3060)
+  const result = propagate(3142)
   const rendered = renderTrajectory(result)
 
   it('produces non-null output', () => {

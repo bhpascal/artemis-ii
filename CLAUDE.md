@@ -14,29 +14,29 @@ A Bret Victor-style "explorable explanation" of the orbital mechanics behind NAS
 
 **Flyby rewrite spec**: `docs/flyby-rewrite-spec.md` — HISTORICAL. The patched-conic solver was replaced by a CR3BP integrator (`src/physics/cr3bp.ts`). This spec documents the debugging journey but the code it describes no longer exists.
 
-## Current Status (as of 2026-04-08)
+## Current Status (as of 2026-04-09)
 
 **What's working:**
-- Sections 1-4 render with CR3BP trajectories
-- **Free Return section uses the Arenstorf periodic orbit at real μ = 0.012277471** — perfect closed figure-8, no mass enhancement. Slider controls velocity perturbation (±30 m/s); at 0 it's periodic, at 10 m/s the orbit misses closure by 80% of D_MOON (chaos demo).
-- **Real Mission section uses real JPL Horizons ephemeris** for Orion (ID -1024) — actual spacecraft state vectors at 30-minute intervals, transformed into the 2D co-rotating frame. Flyby data matches reality: 413,005 km from Earth, 8,520 km from Moon, 0.42 km/s at T+5d. The Arenstorf orbit still shows as the figure-8 ghost background.
-- Live telemetry in Hook section from `artemis.cdnspace.ca/api/orbit` (updates every 60s)
+- Sections 1-4 render with CR3BP trajectories at real μ = 0.012277471. No mass enhancement anywhere.
+- **Free Return section uses 2D LEO-injection CR3BP at real μ** — slider controls injection Δv (3138–3143 m/s, step 0.1), sweet spot at 3142.5 (16 km reentry perigee). Δv=3140 misses (4,883 km perigee), Δv=3143 crashes into Earth. 6 m/s window between "misses" and "crashes". Flyby altitude at sweet spot is ~22,900 km — wider than real Artemis II (~6,500 km) because strict 2D geometry loses the slight inclination tightening the real mission uses.
+- **Real Mission section uses real JPL Horizons ephemeris** for Orion (-1024) at 30-minute intervals. Flyby values match reality: 413,005 km Earth distance, 8,520 km Moon distance, 0.42 km/s at T+5d.
+- Live telemetry in Hook section from `artemis.cdnspace.ca/api/orbit`
 - Countdown to lunar closest approach
 - Behind the Scenes page at `/behind-the-scenes`
-- Physics test suite: `npm test` runs 22 vitest tests. Run these after any `cr3bp.ts` change.
+- Physics test suite: `npm test` runs 24 vitest tests. Run these after any `cr3bp.ts` change.
+
+**Why the Arenstorf detour got reverted (2026-04-09):**
+A reference doc in `docs/claude-web-viz` claimed the Hairer benchmark Arenstorf orbit (x₀=0.994, ẏ₀=−2.00158) produces a "perfect figure-8". That claim is wrong — the orbit actually has 3 Earth lobes + 1 Moon flyby per period (6 axis crossings). True simple figure-8 periodic orbits don't really exist in the CR3BP at Earth-Moon mass ratio. What you want for "free return" is a *non-periodic* single-pass trajectory, which the old μ=0.15 LEO propagator was approximating. After a proper scan, 2D LEO injection at real μ DOES produce clean free returns — we just needed the right (Δv, injection angle) combo: (3142.5 m/s, 65°). The old μ=0.15 enhancement was a band-aid for a search that gave up too early.
+
+The Arenstorf propagator and tests are still in the code (`propagateArenstorf()`, `renderArenstorfTrajectory()`, Arenstorf test cases) but unused by production. Could be deleted or kept as a "look at three-body periodic orbits" bonus. For now: unused.
 
 **Refreshing ephemeris data:**
-`npm run fetch-ephemeris` runs `scripts/fetch-ephemeris.ts`, which hits the JPL Horizons API for both Orion (-1024) and Moon (301), parses the Vectors table, transforms into the 2D co-rotating frame, and writes `src/data/orion-trajectory.json`. The JSON is committed to git — builds do not hit Horizons. Re-run manually when fresh data is wanted (e.g., post-splashdown). The pre-Horizons phase (first ~3.4 hours) still uses a synthetic HEO orbit approximation because Horizons has no data before then.
-
-**Architecture note — CR3BP vs real data:**
-- `propagateArenstorf(vyPerturbation)` at `MU_REAL` — powers the interactive Free Return section
-- `propagate(injectionDv, ...)` at `MU_CR3BP = 0.15` — **no longer used by any section**; retained only for the legacy test script. Can be removed after verifying no other consumers.
-- `computeArtemisTrajectory()` in `trajectory.ts` now reads bundled Horizons JSON instead of running a CR3BP integration.
+`npm run fetch-ephemeris` runs `scripts/fetch-ephemeris.ts`, which hits the JPL Horizons API for Orion and Moon, transforms into the 2D co-rotating frame, and writes `src/data/orion-trajectory.json`. Committed to git — builds do not hit Horizons. Re-run manually when fresh data is wanted.
 
 **What's next:**
-- **Inertial frame toggle**: Commented out in Free Return — needs CR3BP→inertial coordinate rotation. Transform formulas are in `docs/claude-web-viz`. Now that the orbit itself is clean, this is mostly a coordinate-math task.
-- **Behind the Scenes page**: Add the μ enhancement debugging story and the Arenstorf transition to the narrative. Plus now the "real data replaces simulation" story for Section 5.
-- **Cleanup**: Delete `MU_CR3BP` and the LEO `propagate()` function once confirmed nothing else depends on them.
+- **Inertial frame toggle**: Commented out in Free Return — needs CR3BP→inertial coordinate rotation. Transform formulas are in `docs/claude-web-viz`.
+- **Behind the Scenes page**: Add the whole debugging arc: patched-conic failure → CR3BP at μ=0.15 → Arenstorf detour (and why the reference doc was wrong) → final Option D at real μ → real Horizons data for Section 5.
+- **Cleanup**: Delete the unused Arenstorf code (`propagateArenstorf`, `renderArenstorfTrajectory`, their tests) once we're sure we don't want them as a bonus.
 
 ## Tech Stack
 

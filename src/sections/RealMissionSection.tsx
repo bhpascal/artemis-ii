@@ -9,8 +9,8 @@ import {
   D_MOON,
   MISSION_DURATION_DAYS,
 } from '../physics/constants'
-import { solveArenstorf } from '../physics/trajectory-solver'
-import { renderArenstorfTrajectory } from '../physics/trajectory-renderer'
+import { solve } from '../physics/trajectory-solver'
+import { renderTrajectory } from '../physics/trajectory-renderer'
 import {
   computeArtemisTrajectory,
   interpolateTrajectory,
@@ -33,10 +33,10 @@ export function RealMissionSection() {
 
   const trajectory = useMemo(() => computeArtemisTrajectory(), [])
 
-  // Smooth spatial path for the background — Arenstorf figure-8 at real μ
+  // Smooth spatial path for the background — CR3BP free return at real μ
   const freeReturn = useMemo(() => {
-    const result = solveArenstorf(0)
-    return result.success ? renderArenstorfTrajectory(result) : null
+    const result = solve(3142.5)
+    return result.success ? renderTrajectory(result) : null
   }, [])
 
   const met = missionHours * 3600 // seconds
