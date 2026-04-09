@@ -1,14 +1,17 @@
 /**
  * Pre-computed Artemis II trajectory.
  *
- * Uses the patched-conic solver with actual mission parameters to produce
- * a time-stamped trajectory, then provides interpolation for smooth
- * scrubbing across the 10-day mission.
+ * Real NASA / JPL Horizons ephemeris data for Orion (ID -1024) transformed
+ * into the 2D co-rotating frame where the Moon sits along the +x axis.
+ * The ephemeris JSON is generated manually with `npx tsx scripts/fetch-ephemeris.ts`
+ * and committed to the repo for build-time reproducibility.
+ *
+ * The first ~3.4 hours (pre-Horizons) use a synthetic HEO orbit since
+ * Horizons doesn't publish data for the early orbit-raising phase.
  */
 
 import {
   LAUNCH_EPOCH,
-  TLI_EPOCH,
   MU_EARTH,
   D_MOON,
   HEO_APOGEE,
@@ -18,7 +21,19 @@ import {
 } from './constants'
 import { orbitStateAtAnomaly, orbitalPeriod } from './orbits'
 import { meanAnomalyToTrue } from './kepler'
-import { propagate } from './cr3bp'
+import ephemerisData from '../data/orion-trajectory.json'
+
+interface EphemerisPoint {
+  t: number
+  x: number
+  y: number
+  speed: number
+  distEarth: number
+  distMoon: number
+  moonX: number
+}
+
+const EPHEMERIS: EphemerisPoint[] = ephemerisData.points
 
 export interface TrajectoryPoint {
   /** Mission elapsed time (seconds from launch) */
@@ -84,107 +99,130 @@ export const MISSION_EVENTS = [
   { t: 10 * 86400, label: 'Splashdown' },
 ]
 
-function getMoonPosition(t: number): { x: number; y: number } {
-  const moonAngularVelocity = 2 * Math.PI / T_MOON
-  // Moon's angle at launch (arbitrary reference — we'll align with the trajectory)
-  const moonAngle = moonAngularVelocity * t
-  return {
-    x: D_MOON * Math.cos(moonAngle),
-    y: D_MOON * Math.sin(moonAngle),
-  }
+/**
+ * Assign a mission phase to a given elapsed time.
+ * Used for both the synthetic HEO phase and the real ephemeris phase.
+ */
+function phaseAtTime(t: number, distMoon: number): MissionPhase {
+  const tliTime = 25 * 3600 + 14 * 60 // ~25.2h, matches TLI_EPOCH
+  if (t < 3600) return 'launch'
+  if (t < tliTime) return 'orbit-raising'
+  if (t < tliTime + 3600) return 'tli-coast'
+  // Post-TLI: use Moon proximity to detect the flyby, time fraction for the rest
+  if (distMoon < 70e6) return 'lunar-flyby' // ~Moon SOI
+  if (t < 5 * 86400) return 'outbound'
+  if (t > 9.5 * 86400) return 'reentry'
+  return 'return'
 }
 
 /**
- * Compute the full Artemis II trajectory, sampled every `sampleInterval` seconds.
- * This runs once at page load (~50ms).
+ * Interpolate the Moon's actual distance from Earth at a given mission time.
+ * Used by the renderer to place the Moon sprite correctly in the co-rotating
+ * frame (the distance varies ~3% over the mission due to lunar orbit eccentricity).
+ */
+export function getMoonDistanceAtTime(t: number): number {
+  if (EPHEMERIS.length === 0) return D_MOON
+  if (t <= EPHEMERIS[0]!.t) return EPHEMERIS[0]!.moonX
+  if (t >= EPHEMERIS[EPHEMERIS.length - 1]!.t) return EPHEMERIS[EPHEMERIS.length - 1]!.moonX
+
+  let lo = 0
+  let hi = EPHEMERIS.length - 1
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if (EPHEMERIS[mid]!.t <= t) lo = mid
+    else hi = mid
+  }
+  const a = EPHEMERIS[lo]!
+  const b = EPHEMERIS[hi]!
+  const frac = (t - a.t) / (b.t - a.t)
+  return a.moonX + (b.moonX - a.moonX) * frac
+}
+
+/**
+ * Build the full Artemis II trajectory:
+ *   0 to T+3.4h     — synthetic HEO orbit (Horizons has no data here)
+ *   T+3.4h to end   — real JPL Horizons ephemeris
  */
 export function computeArtemisTrajectory(
   sampleInterval: number = 600 // 10 minutes
 ): TrajectoryPoint[] {
-  const totalTime = MISSION_DURATION_DAYS * 86400
   const points: TrajectoryPoint[] = []
+  const firstEphemerisTime = EPHEMERIS[0]!.t
 
-  // Use the CR3BP integrator for the free-return trajectory
-  // Points are time-ordered in the co-rotating frame
-  const cr3bpResult = propagate(3143, 36, 80000)
-
-  // Time boundaries (seconds from launch)
-  const tliTime = (TLI_EPOCH - LAUNCH_EPOCH) / 1000 // ~25.2 hours
-
-  // Phase 1: Launch through orbit raising (0 to TLI)
-  // Simplified: spacecraft is in an elliptical orbit around Earth
-  // After apogee raise: HEO orbit (2,414 km × 74,030 km altitude)
+  // Phase 1: Pre-Horizons HEO approximation (0 to ~3.4 hours)
   const aHEO = (HEO_PERIGEE + HEO_APOGEE) / 2
   const eHEO = (HEO_APOGEE - HEO_PERIGEE) / (HEO_APOGEE + HEO_PERIGEE)
   const periodHEO = orbitalPeriod(MU_EARTH, aHEO)
 
-  for (let t = 0; t < tliTime; t += sampleInterval) {
-    // During orbit raising, model as a single HEO orbit for simplicity
-    // (the actual sequence of burns is more complex)
+  for (let t = 0; t < firstEphemerisTime; t += sampleInterval) {
     const fracOfOrbit = ((t % periodHEO) / periodHEO) * 2 * Math.PI
     const nu = meanAnomalyToTrue(fracOfOrbit, eHEO)
     const state = orbitStateAtAnomaly(aHEO, eHEO, MU_EARTH, nu)
 
+    // Moon's approximate position during this early phase (uses mean motion)
+    const moonAngle = (2 * Math.PI / T_MOON) * t
+    const moonX = D_MOON * Math.cos(moonAngle)
+    const moonY = D_MOON * Math.sin(moonAngle)
+
     const distEarth = Math.sqrt(state.x * state.x + state.y * state.y)
-    const moonPos = getMoonPosition(t)
-    const distMoon = Math.sqrt(
-      (state.x - moonPos.x) ** 2 + (state.y - moonPos.y) ** 2
-    )
+    const distMoon = Math.sqrt((state.x - moonX) ** 2 + (state.y - moonY) ** 2)
     const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy)
 
-    const phase: MissionPhase = t < 3600 ? 'launch' : t < tliTime - 3600 ? 'orbit-raising' : 'tli-coast'
-
     points.push({
-      t, x: state.x, y: state.y,
-      vx: state.vx, vy: state.vy,
-      distEarth, distMoon, speed, phase,
+      t,
+      x: state.x,
+      y: state.y,
+      vx: state.vx,
+      vy: state.vy,
+      distEarth,
+      distMoon,
+      speed,
+      phase: phaseAtTime(t, distMoon),
     })
   }
 
-  // Phase 2: Post-TLI — use CR3BP trajectory points (already time-ordered)
-  if (cr3bpResult.success && cr3bpResult.points.length > 0) {
-    // CR3BP integration covers 4π normalized time ≈ 54.6 days with 80000 steps
-    // Post-TLI mission phase is ~7.5 days. Map CR3BP time to mission time.
-    const cr3bpTotalTime = (4 * Math.PI * T_MOON) / (2 * Math.PI) // physical seconds
-    const postTliDuration = totalTime - tliTime
-    const cr3bpPts = cr3bpResult.points
+  // Phase 2: Real ephemeris data. Resample to sampleInterval via linear
+  // interpolation so the scrubber gets a consistent time grid, and derive
+  // velocity components from position deltas for the velocity arrow.
+  const lastEphemerisTime = EPHEMERIS[EPHEMERIS.length - 1]!.t
+  const totalTime = MISSION_DURATION_DAYS * 86400
 
-    // Moon position in co-rotating frame (fixed at +x)
-    const moonXCorot = D_MOON
-
-    for (let t = tliTime; t < totalTime; t += sampleInterval) {
-      const missionFrac = (t - tliTime) / postTliDuration
-      // Map to CR3BP index — use fraction of the post-TLI mission duration
-      // Scale so 7.5 days maps to the relevant portion of the CR3BP integration
-      const cr3bpFrac = missionFrac * (postTliDuration / cr3bpTotalTime)
-      if (cr3bpFrac >= 1) break
-      const idx = Math.min(Math.floor(cr3bpFrac * cr3bpPts.length), cr3bpPts.length - 1)
-      const pt = cr3bpPts[idx]
-      if (!pt) continue
-
-      // Velocity from adjacent points
-      const nextIdx = Math.min(idx + 1, cr3bpPts.length - 1)
-      const nextPt = cr3bpPts[nextIdx]!
-      const cr3bpDt = cr3bpTotalTime / cr3bpPts.length
-      const vx = nextIdx > idx ? (nextPt.x - pt.x) / cr3bpDt : 0
-      const vy = nextIdx > idx ? (nextPt.y - pt.y) / cr3bpDt : 0
-
-      const distEarth = Math.sqrt(pt.x ** 2 + pt.y ** 2)
-      const distMoon = Math.sqrt((pt.x - moonXCorot) ** 2 + pt.y ** 2)
-      const speed = Math.sqrt(vx ** 2 + vy ** 2)
-
-      // Determine phase from distances
-      let phase: MissionPhase
-      if (distMoon < 1e8) phase = 'lunar-flyby'
-      else if (missionFrac < 0.4) phase = 'outbound'
-      else if (missionFrac > 0.9) phase = 'reentry'
-      else phase = 'return'
-
-      points.push({
-        t, x: pt.x, y: pt.y, vx, vy,
-        distEarth, distMoon, speed, phase,
-      })
+  for (let t = firstEphemerisTime; t < Math.min(lastEphemerisTime, totalTime); t += sampleInterval) {
+    // Binary search for bracketing ephemeris samples
+    let lo = 0
+    let hi = EPHEMERIS.length - 1
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      if (EPHEMERIS[mid]!.t <= t) lo = mid
+      else hi = mid
     }
+    const a = EPHEMERIS[lo]!
+    const b = EPHEMERIS[hi]!
+    const frac = (b.t - a.t) > 0 ? (t - a.t) / (b.t - a.t) : 0
+
+    const x = a.x + (b.x - a.x) * frac
+    const y = a.y + (b.y - a.y) * frac
+    const distEarth = a.distEarth + (b.distEarth - a.distEarth) * frac
+    const distMoon = a.distMoon + (b.distMoon - a.distMoon) * frac
+    const speed = a.speed + (b.speed - a.speed) * frac
+
+    // Velocity components from position delta (co-rotating frame).
+    // This is what the velocity arrow needs — it's not the inertial
+    // velocity but the velocity AS SEEN in the co-rotating frame.
+    const vx = (b.x - a.x) / (b.t - a.t || 1)
+    const vy = (b.y - a.y) / (b.t - a.t || 1)
+
+    points.push({
+      t,
+      x,
+      y,
+      vx,
+      vy,
+      distEarth,
+      distMoon,
+      speed,
+      phase: phaseAtTime(t, distMoon),
+    })
   }
 
   return points

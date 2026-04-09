@@ -15,6 +15,7 @@ import {
   computeArtemisTrajectory,
   interpolateTrajectory,
   getMissionPhase,
+  getMoonDistanceAtTime,
   formatMET,
   formatCalendarDate,
   MISSION_PHASES,
@@ -88,8 +89,9 @@ export function RealMissionSection() {
       // Earth
       drawEarth(ctx, transform, R_EARTH, 10)
 
-      // Moon at +x (co-rotating frame)
-      const moonX = D_MOON
+      // Moon at +x in co-rotating frame — actual distance varies ~3%
+      // across the mission due to lunar orbit eccentricity.
+      const moonX = getMoonDistanceAtTime(met)
       const moonY = 0
       drawMoon(ctx, transform, moonX, moonY, R_MOON, 8)
 
